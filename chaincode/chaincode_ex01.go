@@ -1,376 +1,266 @@
 /*
-Smart Contract for PoC - Track & Trace Use Case
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
 */
+
 package main
 
 import (
 	"errors"
 	"fmt"
-	//"strconv"
+	"time"
+	"strconv"
+	
 	"encoding/json"
-
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	//"github.com/hyperledger/fabric/core/crypto/primitives"
+	
 )
 
-// SimpleChaincode example simple Chaincode implementation
-type SimpleChaincode struct {
+// TnT is a high level smart contract that collaborate together business artifact based smart contracts
+type TnT struct {
 }
-
-//iQOS Changes starts ----------------------------------------------------------------
-// Assembly comprises of one Serial ID and multiple Batch IDs
+var assemblyIndexStr = "_assemblyIndex" // Store Key value pair for Assembly
+// Assembly Line Structure
 type AssemblyLine struct{	
-	AssemblyLineId string `json:"assemblyLineId"`
-	SerialId string `json:"serialId"`
-	OriginalFilamentBatchId string `json:"originalFilamentBatchId"`
-	OriginalLedBatchId string `json:"originalLedBatchId"`
-	OriginalCircuitBoardBatchId string `json:"originalCircuitBoardBatchId"`
-	OriginalWireBatchId string `json:"originalWireBatchId"`
-	OriginalCasingBatchId string `json:"originalCasingBatchId"`
-	OriginalAdaptorBatchId string `json:"originalAdaptorBatchId"`
-	OriginalStickPodBatchId string `json:"originalStickPodBatchId"`
-	AssemblyLineStatus string `json:"assemblyLineStatus"`
+	AssemblyId string `json:"assemblyId"`
+	DeviceSerialNo string `json:"deviceSerialNo"`
+	DeviceType string `json:"deviceType"`
+	//FilamentBatchId string `json:"filamentBatchId"`
+	//LedBatchId string `json:"ledBatchId"`
+	//CircuitBoardBatchId string `json:"circuitBoardBatchId"`
+	//WireBatchId string `json:"wireBatchId"`
+	//CasingBatchId string `json:"casingBatchId"`
+	//AdaptorBatchId string `json:"adaptorBatchId"`
+	//StickPodBatchId string `json:"stickPodBatchId"`
+	//ManufacturingPlant string `json:"manufacturingPlant"`
+	AssemblyStatus string `json:"assemblyStatus"`
+	//AssemblyCreationDate string `json:"assemblyCreationDate"`
+	AssemblyLastUpdatedOn string `json:"assemblyLastUpdateOn"`
+	//AssemblyCreatedBy string `json:"assemblyCreatedBy"`
+	//AssemblyLastUpdatedBy string `json:"assemblyLastUpdatedBy"`
 	}
 
-// GetAssemblyLineStatus is for storing retreived Assembly Line Status
-type GetAssemblyLineStatus struct{	
-	AssemblyLineStatus string `json:"assemblyLineStatus"`
-}
-
-//iQOS Changes ends ----------------------------------------------------------------
-
-
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	fmt.Printf("Init called, initializing chaincode")
-	
-	/*
-	// Check if table already exists
-	_, err = stub.GetTable("AssemblyLine")
-	if err == nil {
-		// Table already exists; do not recreate
-		return nil, nil
+// Package Line Structure
+type PackageLine struct{	
+	CaseId string `json:"caseId"`
+	HolderAssemblyId string `json:"holderAssemblyId"`
+	ChargerAssemblyId string `json:"chargerAssemblyId"`
+	PackageStatus string `json:"packageStatus"`
+	PackagingDate string `json:"packagingDate"`
+	PackageCreationDate string `json:"packagingCreationDate"`
+	PackageLastUpdatedOn string `json:"packageLastUpdateOn"`
+	ShippingToAddress string `json:"shippingToAddress"`
+	PackageCreatedBy string `json:"packageCreatedBy"`
+	PackageLastUpdatedBy string `json:"packageLastUpdatedBy"`
 	}
-   */
-	// Create application Table
-	err := stub.CreateTable("AssemblyLine", []*shim.ColumnDefinition{
-		&shim.ColumnDefinition{Name: "assemblyLineId", Type: shim.ColumnDefinition_STRING, Key: true},
-		&shim.ColumnDefinition{Name: "serialId", Type: shim.ColumnDefinition_STRING, Key: false},
-		&shim.ColumnDefinition{Name: "originalFilamentBatchId", Type: shim.ColumnDefinition_STRING, Key: false},
-		&shim.ColumnDefinition{Name: "originalLedBatchId", Type: shim.ColumnDefinition_STRING, Key: false},
-		&shim.ColumnDefinition{Name: "originalCircuitBoardBatchId", Type: shim.ColumnDefinition_STRING, Key: false},
-		&shim.ColumnDefinition{Name: "originalWireBatchId", Type: shim.ColumnDefinition_STRING, Key: false},
-		&shim.ColumnDefinition{Name: "originalCasingBatchId", Type: shim.ColumnDefinition_STRING, Key: false},
-		&shim.ColumnDefinition{Name: "originalAdaptorBatchId", Type: shim.ColumnDefinition_STRING, Key: false},
-		&shim.ColumnDefinition{Name: "originalStickPodBatchId", Type: shim.ColumnDefinition_STRING, Key: false},
-		&shim.ColumnDefinition{Name: "assemblyLineStatus", Type: shim.ColumnDefinition_STRING, Key: false},
 
-	})
+// Init initializes the smart contracts
+func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+
+	var _temp int;
+	var err error
+
+	if len(args) != 1 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1. Got: %d.", len(args))
+		}
+
+		// Initialize the chaincode
+	_temp, err = strconv.Atoi(args[0])
 	if err != nil {
-		return nil, errors.New("Failed creating AssemblyLine.")
+		return nil, errors.New("Expecting integer value ")
 	}
-
+	// Write the state to the ledger
+	err = stub.PutState("12345678", []byte(strconv.Itoa(_temp)))				
+	if err != nil {
+		return nil, err
+	}
+	var empty []string
+	jsonAsBytes, _ := json.Marshal(empty)								//marshal an emtpy array of strings to clear the index
+	err = stub.PutState(assemblyIndexStr, jsonAsBytes)
+	if err != nil {
+		return nil, err
+	}
+	
 	return nil, nil
 }
-
-
-
-//startAssemblyLine to start an Assemblyline
-func (t *SimpleChaincode) startAssemblyLine(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-if len(args) != 9 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 9. Got: %d.", len(args))
+//API to create an assembly
+func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+if len(args) != 4 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 11. Got: %d.", len(args))
 		}
+
+		//var columns []shim.Column
+		//_assemblyId:= rand.New(rand.NewSource(99)).Int31
+
+		//Generate the AssemblyId
+		//rand.Seed(time.Now().Unix())
 		
-		assemblyLineId:=args[0]
-		serialId:=args[1]
-		originalFilamentBatchId:=args[2]
-		originalLedBatchId:=args[3]
-		originalCircuitBoardBatchId:=args[4]
-		originalWireBatchId:=args[5]
-		originalCasingBatchId:=args[6]
-		originalAdaptorBatchId:=args[7]
-		originalStickPodBatchId:=args[8]
-		assemblyLineStatus:= "InProgress"
+		//_assemblyId := strconv.Itoa(rand.Int())
+		_assemblyId := args[0]
+		_deviceSerialNo:= args[1]
+		_deviceType:=args[2]
+		//_FilamentBatchId:=args[2]
+		//_LedBatchId:=args[3]
+		//_CircuitBoardBatchId:=args[4]
+		//_WireBatchId:=args[5]
+		//_CasingBatchId:=args[6]
+		//_AdaptorBatchId:=args[7]
+		//_StickPodBatchId:=args[8]
+		//_ManufacturingPlant:=args[9]
+		_AssemblyStatus:= args[0]
 
-		// Insert a row
-		ok, err := stub.InsertRow("AssemblyLine", shim.Row{
-			Columns: []*shim.Column{
-				&shim.Column{Value: &shim.Column_String_{String_: assemblyLineId}},
-				&shim.Column{Value: &shim.Column_String_{String_: serialId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalFilamentBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalLedBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalCircuitBoardBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalWireBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalCasingBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalAdaptorBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalStickPodBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: assemblyLineStatus}},
-			}})
+		_time:= time.Now().Local()
 
+		//_AssemblyCreationDate := _time.Format("2006-01-02")
+		_AssemblyLastUpdateOn := _time.Format("2006-01-02")
+		//_AssemblyCreatedBy := ""
+		//_AssemblyLastUpdatedBy := ""
+
+	//check if marble already exists
+		assemblyAsBytes, err := stub.GetState(_assemblyId)
 		if err != nil {
-			return nil, err 
+		return nil, errors.New("Failed to get assembly Id")
 		}
-		if !ok && err == nil {
-			return nil, errors.New("Row already exists.")
+		res := AssemblyLine{}
+		json.Unmarshal(assemblyAsBytes, &res)
+		if res.AssemblyId == _assemblyId{
+		fmt.Println("This Assembly arleady exists: " + _assemblyId)
+		fmt.Println(res);
+		return nil, errors.New("This Assembly arleady exists")				//all stop an Assembly already exists
 		}
+
+
+		str := `{"assemblyId": "` + _assemblyId + `", "deviceSerialNo": "` + _deviceSerialNo + `", "deviceType": "` + _deviceType + `", "assemblyStatus": "`+ _AssemblyStatus +`", "assemblyLastUpdateOn": "` + _AssemblyLastUpdateOn + `"}`
+		
+		err = stub.PutState(_assemblyId, []byte(str))								//store assembly with id as key
+		if err != nil {
+		return nil, err
+		}
+
+		//get the assembly index
+		assemblyAsBytes, err = stub.GetState(assemblyIndexStr)
+		if err != nil {
+			return nil, errors.New("Failed to get assembly index")
+		}
+		var assemblyIndex []string
+		json.Unmarshal(assemblyAsBytes, &assemblyIndex)							//un stringify it aka JSON.parse()
+		
+		//append
+		assemblyIndex = append(assemblyIndex, _assemblyId)								//add assembly id in Index list
+		fmt.Println("! Assembly index: ", assemblyIndex)
+		jsonAsBytes, _ := json.Marshal(assemblyIndex)
+		err = stub.PutState(assemblyIndexStr, jsonAsBytes)						//store assembly
+
+		fmt.Println("Create Assembly")
 			
 		return nil, nil
 
 }
 
-//Update AssemblyLine status
-func (t *SimpleChaincode) updateAssemblyLineStatus(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+//Update Assembly based on Id (Now only status)
+func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2.")
 	} 
-	//else {
-	//	return nil, errors.New("Correct number of arguments. Got 2.")
-	//}
-
-
-	assemblyLineId := args[0]
-	assemblyLineStatus := args[1]
 	
-	
-
-	// Get the row pertaining to this AssemblyLineId
-	var columns []shim.Column
-	col1 := shim.Column{Value: &shim.Column_String_{String_: assemblyLineId}}
-	columns = append(columns, col1)
-
-	row, err := stub.GetRow("AssemblyLine", columns)
-	if err != nil {
-		return nil, fmt.Errorf("Error: Failed retrieving AssemblyLine with assemblyLineId %s. Error %s", assemblyLineId, err.Error())
-	}
-
-	// GetRows returns empty message if key does not exist
-	if len(row.Columns) == 0 {
-		return nil, nil
-	}
-
-	// Delete the row pertaining to this assemblyLineId
-	err = stub.DeleteRow(
-		"Assemblyline",
-		columns,
-	)
-	if err != nil {
-		return nil, errors.New("Failed deleting row.")
-	}
-
-		//assemblyLineId:=row.Columns[0].GetString_()
-		serialId:=row.Columns[1].GetString_()
-		originalFilamentBatchId:=row.Columns[2].GetString_()
-		originalLedBatchId:=row.Columns[3].GetString_()
-		originalCircuitBoardBatchId:=row.Columns[4].GetString_()
-		originalWireBatchId:=row.Columns[5].GetString_()
-		originalCasingBatchId:=row.Columns[6].GetString_()
-		originalAdaptorBatchId:=row.Columns[7].GetString_()
-		originalStickPodBatchId:=row.Columns[8].GetString_()
-		//assemblyLineStatus:= assemblyLineStatus
-
-
-		// Insert a row
-		ok, err := stub.InsertRow("AssemblyLine", shim.Row{
-			Columns: []*shim.Column{
-				&shim.Column{Value: &shim.Column_String_{String_: assemblyLineId}},
-				&shim.Column{Value: &shim.Column_String_{String_: serialId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalFilamentBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalLedBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalCircuitBoardBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalWireBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalCasingBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalAdaptorBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: originalStickPodBatchId}},
-				&shim.Column{Value: &shim.Column_String_{String_: assemblyLineStatus}},
-			}})
-
+		_assemblyId := args[0]
+		//_deviceSerialNo:= args[1]
+		//_deviceType:=args[2]
+		//_FilamentBatchId:=args[3]
+		//_LedBatchId:=args[4]
+		//_CircuitBoardBatchId:=args[5]
+		//_WireBatchId:=args[6]
+		//_CasingBatchId:=args[7]
+		//_AdaptorBatchId:=args[8]
+		//_StickPodBatchId:=args[9]
+		//_ManufacturingPlant:=args[10]
+		_AssemblyStatus:= args[1]
+		//_AssemblyCreationDate := args[12]
+		//_AssemblyCreatedBy :=  args[13]
+		_time:= time.Now().Local()
+		_AssemblyLastUpdateOn := _time.Format("2006-01-02")
+		//_AssemblyLastUpdatedBy := ""
+		str := `{ "assemblyStatus": "` + _AssemblyStatus + `", "assemblyLastUpdateOn": "` +  _AssemblyLastUpdateOn  + `"}`
+		err := stub.PutState(_assemblyId, []byte(str))								//write the status into the chaincode state
 		if err != nil {
-			return nil, err 
+		return nil, err
 		}
-		if !ok && err == nil {
-			return nil, errors.New("Row already exists in Assemblyline.")
-		}
+	
 		
 	return nil, nil
 
 }
 
+
+//get the Assembly against ID
+func (t *TnT) getAssemblyByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting AssemblyID to query")
+	}
+
+	_assemblyId := args[0]
+	
+	valAsbytes, err := stub.GetState(_assemblyId)									//get the var from chaincode state
+	if err != nil {
+		jsonResp := "{\"Error\":\"Failed to get state for " +  _assemblyId  + "\"}"
+		return nil, errors.New(jsonResp)
+	}
+
+	return valAsbytes, nil	
+
+}
+
+
+
 // Invoke callback representing the invocation of a chaincode
-// This chaincode will manage two accounts A and B and will transfer X units from A to B upon invoke
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *TnT) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Printf("Invoke called, determining function")
 	
 	// Handle different functions
 	if function == "init" {
 		fmt.Printf("Function is init")
 		return t.Init(stub, function, args)
-	} else if function == "startAssemblyLine" {
-		fmt.Printf("Function is startAssemblyLine")
-		return t.startAssemblyLine(stub, args)
-	} else if function == "updateAssemblyLineStatus" {
-		fmt.Printf("Function is updateAssemblyLineStatus")
-		return t.updateAssemblyLineStatus(stub, args)
+	} else if function == "createAssembly" {
+		fmt.Printf("Function is createAssembly")
+		return t.createAssembly(stub, args)
+	} else if function == "updateAssemblyByID" {
+		fmt.Printf("Function is updateAssemblyByID")
+		return t.updateAssemblyByID(stub, args)
 	} 
-
 	return nil, errors.New("Received unknown function invocation")
 }
 
-func (t* SimpleChaincode) Run(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	fmt.Printf("Run called, passing through to Invoke (same function)")
-	
-	// Handle different functions
-	if function == "startAssemblyLine" {
-		fmt.Printf("Function is startAssemblyLine")
-		return t.startAssemblyLine(stub, args)
-	}  else if function == "updateAssemblyLineStatus" {
-		fmt.Printf("Function is updateAssemblyLineStatus")
-		return t.updateAssemblyLineStatus(stub, args)
-	} else if function == "init" {
-		fmt.Printf("Function is init")
-		return t.Init(stub, function, args)
-	}
-
-	return nil, errors.New("Received unknown function invocation")
-}
-
-//get the AssemblyLine against ID
-func (t *SimpleChaincode) getAssemblyLineByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-
-	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting AssemblyLineID to query")
-	}
-
-	assemblyLineID := args[0]
-	
-
-	// Get the row pertaining to this assemblyLineID
-	var columns []shim.Column
-	col1 := shim.Column{Value: &shim.Column_String_{String_: assemblyLineID}}
-	columns = append(columns, col1)
-
-	row, err := stub.GetRow("AssemblyLine", columns)
-	if err != nil {
-		jsonResp := "{\"Error\":\"Failed to get the data for the assemblyLineID " + assemblyLineID + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	// GetRows returns empty message if key does not exist
-	if len(row.Columns) == 0 {
-		jsonResp := "{\"Error\":\"Failed to get the data for the assemblyLineID " + assemblyLineID + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	//return []byte (row), nil
-	 mapB, _ := json.Marshal(row)
-    fmt.Println(string(mapB))
-	
-	return mapB, nil
-
-}
-
-
-//get the status against the AssemblyLineID
-func (t *SimpleChaincode) getAssemblyLineStatus(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-
-	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting AssemblyLineID to query")
-	}
-
-	assemblyLineID := args[0]
-	
-
-	// Get the row pertaining to this assemblyLineID
-	var columns []shim.Column
-	col1 := shim.Column{Value: &shim.Column_String_{String_: assemblyLineID}}
-	columns = append(columns, col1)
-
-	row, err := stub.GetRow("AssemblyLine", columns)
-	if err != nil {
-		jsonResp := "{\"Error\":\"Failed to get the data for the assemblyLineID " + assemblyLineID + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	// GetRows returns empty message if key does not exist
-	if len(row.Columns) == 0 {
-		jsonResp := "{\"Error\":\"Failed to get the data for the assemblyLineID " + assemblyLineID + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	
-	
-	res2E := GetAssemblyLineStatus{}
-	
-	res2E.AssemblyLineStatus = row.Columns[9].GetString_()
-	
-  /*  
-    mapB, _ := json.Marshal(res2E)
-    fmt.Println(string(mapB))
-	return mapB, nil
-  */	
- 
-    return []byte (res2E.AssemblyLineStatus), nil
-
-}
-
-//get all AssemblyLines
-func (t *SimpleChaincode) getAllAssemblyLines(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {	
-var columns []shim.Column
-
-	rows, err := stub.GetRows("AssemblyLine", columns)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to retrieve row")
-	}
- 
-   
-		
-	res2E:= []*AssemblyLine{}	
-	
-	for row := range rows {		
-		newApp:= new(AssemblyLine)
-		newApp.AssemblyLineId = row.Columns[0].GetString_()
-		newApp.SerialId = row.Columns[1].GetString_()
-		newApp.OriginalFilamentBatchId = row.Columns[2].GetString_()
-		newApp.OriginalLedBatchId = row.Columns[3].GetString_()
-		newApp.OriginalCircuitBoardBatchId = row.Columns[4].GetString_()
-		newApp.OriginalWireBatchId = row.Columns[5].GetString_()
-		newApp.OriginalCasingBatchId = row.Columns[6].GetString_()
-		newApp.OriginalAdaptorBatchId = row.Columns[7].GetString_()
-		newApp.OriginalStickPodBatchId = row.Columns[8].GetString_()
-		newApp.AssemblyLineStatus = row.Columns[9].GetString_()
-		
-		if len(newApp.AssemblyLineId) > 0{
-		res2E=append(res2E,newApp)		
-		}				
-	}
-	
-    mapB, _ := json.Marshal(res2E)
-    fmt.Println(string(mapB))
-	
-	return mapB, nil
-
-}
 
 // query queries the chaincode
-func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Printf("Query called, determining function")
 
-	if function == "getAssemblyLineStatus" { 
-		t := SimpleChaincode{}
-		return t.getAssemblyLineStatus(stub, args)
-	} else if function == "getAssemblyLineByID" { 
-		t := SimpleChaincode{}
-		return t.getAssemblyLineByID(stub, args)
-	} else if function == "getAllAssemblyLines" { 
-		t := SimpleChaincode{}
-		return t.getAllAssemblyLines(stub, args)
+	if function == "getAssemblyByID" { 
+		t := TnT{}
+		return t.getAssemblyByID(stub, args)
 	}
 	
 	return nil, errors.New("Received unknown function query")
 }
-//iQOS Changes ends------------------------------------------------------------------------------------------
 
-func main() {
-	err := shim.Start(new(SimpleChaincode))
+	func main() {
+	err := shim.Start(new(TnT))
 	if err != nil {
 		fmt.Printf("Error starting Simple chaincode: %s", err)
 	}
