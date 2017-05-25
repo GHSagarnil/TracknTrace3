@@ -123,7 +123,7 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		//_AdaptorBatchId:=args[7]
 		//_StickPodBatchId:=args[8]
 		//_ManufacturingPlant:=args[9]
-		_AssemblyStatus:= args[0]
+		_AssemblyStatus:= args[3]
 
 		_time:= time.Now().Local()
 
@@ -132,7 +132,7 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		//_AssemblyCreatedBy := ""
 		//_AssemblyLastUpdatedBy := ""
 
-	//check if marble already exists
+	//Checking if the Assembly already exists
 		assemblyAsBytes, err := stub.GetState(_assemblyId)
 		if err != nil {
 		return nil, errors.New("Failed to get assembly Id")
@@ -145,28 +145,32 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		return nil, errors.New("This Assembly arleady exists")				//all stop an Assembly already exists
 		}
 
+		//setting the AssemblyLine to create
+		assem := AssemblyLine{}
+		assem.AssemblyId = _assemblyId
+		assem.DeviceSerialNo = _deviceSerialNo
+		assem.DeviceType= _deviceType
+		assem.AssemblyStatus = _AssemblyStatus
+		assem.AssemblyLastUpdatedOn = _AssemblyLastUpdateOn
 
-		str := `{"assemblyId": "` + _assemblyId + `", "deviceSerialNo": "` + _deviceSerialNo + `", "deviceType": "` + _deviceType + `", "assemblyStatus": "`+ _AssemblyStatus +`", "assemblyLastUpdateOn": "` + _AssemblyLastUpdateOn + `"}`
+		/*
+		//str := `{"assemblyId": "` + _assemblyId + `", "deviceSerialNo": "` + _deviceSerialNo + `", "deviceType": "` + _deviceType + `", "assemblyStatus": "`+ //_AssemblyStatus +`", "assemblyLastUpdateOn": "` + _AssemblyLastUpdateOn + `"}`
 		
 		err = stub.PutState(_assemblyId, []byte(str))								//store assembly with id as key
 		if err != nil {
 		return nil, err
 		}
-/*
-		//get the assembly index
-		assemblyAsBytes, err = stub.GetState(assemblyIndexStr)
-		if err != nil {
-			return nil, errors.New("Failed to get assembly index")
-		}
-		var assemblyIndex []string
-		json.Unmarshal(assemblyAsBytes, &assemblyIndex)							//un stringify it aka JSON.parse()
+		*/
+
+		bytes, err := json.Marshal(assem)
+
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
+
+		err = stub.PutState(_assemblyId, bytes)
 		
-		//append
-		assemblyIndex = append(assemblyIndex, _assemblyId)								//add assembly id in Index list
-		fmt.Println("! Assembly index: ", assemblyIndex)
-		jsonAsBytes, _ := json.Marshal(assemblyIndex)
-		err = stub.PutState(assemblyIndexStr, jsonAsBytes)						//store assembly
-*/	
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+
+	
 		fmt.Println("Create Assembly")
 		
 		return nil, nil
