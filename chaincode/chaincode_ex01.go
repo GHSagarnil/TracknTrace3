@@ -157,7 +157,7 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		err = stub.PutState(_assemblyId, bytes)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
 
-	
+	/*
 		// Holding the AssemblyIDs in State separately
 		bytes, err = stub.GetState("Assemblies")
 		if err != nil { return nil, errors.New("Unable to get Assemblies") }
@@ -174,7 +174,7 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 
 		err = stub.PutState("Assemblies", bytes)
 		if err != nil { return nil, errors.New("Unable to put the state") }
-
+*/
 		fmt.Println("Created Assembly successfully")
 		
 		return nil, nil
