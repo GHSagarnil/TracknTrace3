@@ -97,9 +97,11 @@ func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []str
 	
 	return nil, nil
 }
+
 //API to create an assembly
 func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-if len(args) != 4 {
+
+	if len(args) != 4 {
 			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 11. Got: %d.", len(args))
 		}
 
@@ -150,7 +152,7 @@ if len(args) != 4 {
 		if err != nil {
 		return nil, err
 		}
-
+/*
 		//get the assembly index
 		assemblyAsBytes, err = stub.GetState(assemblyIndexStr)
 		if err != nil {
@@ -164,9 +166,9 @@ if len(args) != 4 {
 		fmt.Println("! Assembly index: ", assemblyIndex)
 		jsonAsBytes, _ := json.Marshal(assemblyIndex)
 		err = stub.PutState(assemblyIndexStr, jsonAsBytes)						//store assembly
-
+*/	
 		fmt.Println("Create Assembly")
-			
+		
 		return nil, nil
 
 }
@@ -195,14 +197,37 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		_time:= time.Now().Local()
 		_AssemblyLastUpdateOn := _time.Format("2006-01-02")
 		//_AssemblyLastUpdatedBy := ""
-		str := `{ "assemblyStatus": "` + _AssemblyStatus + `", "assemblyLastUpdateOn": "` +  _AssemblyLastUpdateOn  + `"}`
-		err := stub.PutState(_assemblyId, []byte(str))								//write the status into the chaincode state
+
+
+		//check if marble already exists
+		assemblyAsBytes, err := stub.GetState(_assemblyId)
 		if err != nil {
-		return nil, err
+		return nil, errors.New("Failed to get assembly Id")
 		}
-	
+		res := AssemblyLine{}
+		json.Unmarshal(assemblyAsBytes, &res)
+
+		//update the AssemblyLine status
+		res.AssemblyStatus = _AssemblyStatus
+		res.AssemblyLastUpdatedOn = _AssemblyLastUpdateOn
+
 		
-	return nil, nil
+		
+		//str := `{ "assemblyStatus": "` + _AssemblyStatus + `", "assemblyLastUpdateOn": "` +  _AssemblyLastUpdateOn  + `"}`
+		//err := stub.PutState(_assemblyId, []byte(str))								
+		//write the status into the chaincode state
+
+		bytes, err := json.Marshal(res)
+
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
+
+		err = stub.PutState(_assemblyId, bytes)
+		
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+
+		return nil, nil
+			
+		//return nil, nil
 
 }
 
