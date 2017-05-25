@@ -33,7 +33,9 @@ import (
 // TnT is a high level smart contract that collaborate together business artifact based smart contracts
 type TnT struct {
 }
+
 var assemblyIndexStr = "_assemblyIndex" // Store Key value pair for Assembly
+
 // Assembly Line Structure
 type AssemblyLine struct{	
 	AssemblyId string `json:"assemblyId"`
@@ -53,6 +55,10 @@ type AssemblyLine struct{
 	//AssemblyCreatedBy string `json:"assemblyCreatedBy"`
 	//AssemblyLastUpdatedBy string `json:"assemblyLastUpdatedBy"`
 	}
+
+type AssemblyID_Holder struct {
+	AssemblyIDs 	[]string `json:"assemblyIDs"`
+}
 
 // Package Line Structure
 type PackageLine struct{	
@@ -134,16 +140,8 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 
 	//Checking if the Assembly already exists
 		assemblyAsBytes, err := stub.GetState(_assemblyId)
-		if err != nil {
-		return nil, errors.New("Failed to get assembly Id")
-		}
-		res := AssemblyLine{}
-		json.Unmarshal(assemblyAsBytes, &res)
-		if res.AssemblyId == _assemblyId{
-		fmt.Println("This Assembly arleady exists: " + _assemblyId)
-		fmt.Println(res);
-		return nil, errors.New("This Assembly arleady exists")				//all stop an Assembly already exists
-		}
+		if err != nil { return nil, errors.New("Failed to get assembly Id") }
+		if assemblyAsBytes != nil { return nil, errors.New("Assembly already exists") }
 
 		//setting the AssemblyLine to create
 		assem := AssemblyLine{}
@@ -153,25 +151,31 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		assem.AssemblyStatus = _AssemblyStatus
 		assem.AssemblyLastUpdatedOn = _AssemblyLastUpdateOn
 
-		/*
-		//str := `{"assemblyId": "` + _assemblyId + `", "deviceSerialNo": "` + _deviceSerialNo + `", "deviceType": "` + _deviceType + `", "assemblyStatus": "`+ //_AssemblyStatus +`", "assemblyLastUpdateOn": "` + _AssemblyLastUpdateOn + `"}`
-		
-		err = stub.PutState(_assemblyId, []byte(str))								//store assembly with id as key
-		if err != nil {
-		return nil, err
-		}
-		*/
-
 		bytes, err := json.Marshal(assem)
-
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
 
 		err = stub.PutState(_assemblyId, bytes)
-		
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
 
 	
-		fmt.Println("Create Assembly")
+		// Holding the AssemblyIDs in State separately
+		bytes, err = stub.GetState("Assemblies")
+		if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+		var assemIDs AssemblyID_Holder
+
+		err = json.Unmarshal(bytes, &assemIDs)
+		if err != nil {	return nil, errors.New("Corrupt Assemblies record") }
+
+		assemIDs.AssemblyIDs = append(assemIDs.AssemblyIDs, _assemblyId)
+		
+		bytes, err = json.Marshal(assemIDs)
+		if err != nil { return nil, errors.New("Error creating Assembly_Holder record") }
+
+		err = stub.PutState("Assemblies", bytes)
+		if err != nil { return nil, errors.New("Unable to put the state") }
+
+		fmt.Println("Created Assembly successfully")
 		
 		return nil, nil
 
@@ -256,6 +260,36 @@ func (t *TnT) getAssemblyByID(stub shim.ChaincodeStubInterface, args []string) (
 }
 
 
+
+func (t *TnT) getAssemblies(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
+	bytes, err := stub.GetState("Assemblies")
+	if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+	var assemblyIDs AssemblyID_Holder
+
+	err = json.Unmarshal(bytes, &assemblyIDs)
+	if err != nil {	return nil, errors.New("Corrupt Assemblies") }
+
+	res2E:= []*AssemblyLine{}	
+
+	for _, assemblyId := range assemblyIDs.AssemblyIDs {
+
+		//Get the existing AssemblyLine
+		assemblyAsBytes, err := stub.GetState(assemblyId)
+		if err != nil { return nil, errors.New("Failed to get Assembly")	}
+
+		res := new(AssemblyLine)
+		json.Unmarshal(assemblyAsBytes, &res)
+
+		// Append Assembly to Assembly Array
+		res2E=append(res2E,res)
+		}
+
+    mapB, _ := json.Marshal(res2E)
+    //fmt.Println(string(mapB))
+	return mapB, nil
+}
 
 // Invoke callback representing the invocation of a chaincode
 func (t *TnT) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
