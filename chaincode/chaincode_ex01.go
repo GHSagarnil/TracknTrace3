@@ -23,7 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
-	"strconv"
+	//"strconv"
 	
 	"encoding/json"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -41,19 +41,19 @@ type AssemblyLine struct{
 	AssemblyId string `json:"assemblyId"`
 	DeviceSerialNo string `json:"deviceSerialNo"`
 	DeviceType string `json:"deviceType"`
-	//FilamentBatchId string `json:"filamentBatchId"`
-	//LedBatchId string `json:"ledBatchId"`
-	//CircuitBoardBatchId string `json:"circuitBoardBatchId"`
-	//WireBatchId string `json:"wireBatchId"`
-	//CasingBatchId string `json:"casingBatchId"`
-	//AdaptorBatchId string `json:"adaptorBatchId"`
-	//StickPodBatchId string `json:"stickPodBatchId"`
-	//ManufacturingPlant string `json:"manufacturingPlant"`
+	FilamentBatchId string `json:"filamentBatchId"`
+	LedBatchId string `json:"ledBatchId"`
+	CircuitBoardBatchId string `json:"circuitBoardBatchId"`
+	WireBatchId string `json:"wireBatchId"`
+	CasingBatchId string `json:"casingBatchId"`
+	AdaptorBatchId string `json:"adaptorBatchId"`
+	StickPodBatchId string `json:"stickPodBatchId"`
+	ManufacturingPlant string `json:"manufacturingPlant"`
 	AssemblyStatus string `json:"assemblyStatus"`
-	//AssemblyCreationDate string `json:"assemblyCreationDate"`
+	AssemblyCreationDate string `json:"assemblyCreationDate"`
 	AssemblyLastUpdatedOn string `json:"assemblyLastUpdateOn"`
-	//AssemblyCreatedBy string `json:"assemblyCreatedBy"`
-	//AssemblyLastUpdatedBy string `json:"assemblyLastUpdatedBy"`
+	AssemblyCreatedBy string `json:"assemblyCreatedBy"`
+	AssemblyLastUpdatedBy string `json:"assemblyLastUpdatedBy"`
 	}
 
 type AssemblyID_Holder struct {
@@ -77,7 +77,7 @@ type PackageLine struct{
 // Init initializes the smart contracts
 func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 
-	var _temp int;
+/*	var _temp int;
 	var err error
 
 	if len(args) != 1 {
@@ -100,7 +100,7 @@ func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []str
 	if err != nil {
 		return nil, err
 	}
-	
+*/	
 	return nil, nil
 }
 
@@ -121,22 +121,22 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		_assemblyId := args[0]
 		_deviceSerialNo:= args[1]
 		_deviceType:=args[2]
-		//_FilamentBatchId:=args[2]
-		//_LedBatchId:=args[3]
-		//_CircuitBoardBatchId:=args[4]
-		//_WireBatchId:=args[5]
-		//_CasingBatchId:=args[6]
-		//_AdaptorBatchId:=args[7]
-		//_StickPodBatchId:=args[8]
-		//_ManufacturingPlant:=args[9]
-		_AssemblyStatus:= args[3]
+		_filamentBatchId:=args[3]
+		_ledBatchId:=args[4]
+		_circuitBoardBatchId:=args[5]
+		_wireBatchId:=args[6]
+		_casingBatchId:=args[7]
+		_adaptorBatchId:=args[8]
+		_stickPodBatchId:=args[9]
+		_manufacturingPlant:=args[10]
+		_assemblyStatus:= args[11]
 
 		_time:= time.Now().Local()
 
-		//_AssemblyCreationDate := _time.Format("2006-01-02")
-		_AssemblyLastUpdateOn := _time.Format("2006-01-02")
-		//_AssemblyCreatedBy := ""
-		//_AssemblyLastUpdatedBy := ""
+		_assemblyCreationDate := _time.Format("2006-01-02")
+		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
+		_assemblyCreatedBy := ""
+		_assemblyLastUpdatedBy := ""
 
 	//Checking if the Assembly already exists
 		assemblyAsBytes, err := stub.GetState(_assemblyId)
@@ -147,9 +147,20 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		assem := AssemblyLine{}
 		assem.AssemblyId = _assemblyId
 		assem.DeviceSerialNo = _deviceSerialNo
-		assem.DeviceType= _deviceType
-		assem.AssemblyStatus = _AssemblyStatus
-		assem.AssemblyLastUpdatedOn = _AssemblyLastUpdateOn
+		assem.DeviceType = _deviceType
+		assem.FilamentBatchId = _filamentBatchId
+		assem.LedBatchId = _ledBatchId
+		assem.CircuitBoardBatchId = _circuitBoardBatchId
+		assem.WireBatchId = _wireBatchId
+		assem.CasingBatchId = _casingBatchId
+		assem.AdaptorBatchId = _adaptorBatchId
+		assem.StickPodBatchId = _stickPodBatchId
+		assem.ManufacturingPlant = _manufacturingPlant
+		assem.AssemblyStatus = _assemblyStatus
+		assem.AssemblyCreationDate = _assemblyCreationDate
+		assem.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
+		assem.AssemblyCreatedBy = _assemblyCreatedBy
+		assem.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
 
 		bytes, err := json.Marshal(assem)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
@@ -189,54 +200,59 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 	} 
 	
 		_assemblyId := args[0]
-		//_deviceSerialNo:= args[1]
-		//_deviceType:=args[2]
-		//_FilamentBatchId:=args[3]
-		//_LedBatchId:=args[4]
-		//_CircuitBoardBatchId:=args[5]
-		//_WireBatchId:=args[6]
-		//_CasingBatchId:=args[7]
-		//_AdaptorBatchId:=args[8]
-		//_StickPodBatchId:=args[9]
-		//_ManufacturingPlant:=args[10]
-		_AssemblyStatus:= args[1]
-		//_AssemblyCreationDate := args[12]
-		//_AssemblyCreatedBy :=  args[13]
+		//_deviceSerialNo:= args[1] - No Change
+		//_deviceType:=args[2] - No Change
+		_filamentBatchId:=args[3]
+		_ledBatchId:=args[4]
+		_circuitBoardBatchId:=args[5]
+		_wireBatchId:=args[6]
+		_casingBatchId:=args[7]
+		_adaptorBatchId:=args[8]
+		_stickPodBatchId:=args[9]
+		_manufacturingPlant:=args[10]
+		_assemblyStatus:= args[11]
+		
 		_time:= time.Now().Local()
-		_AssemblyLastUpdateOn := _time.Format("2006-01-02")
-		//_AssemblyLastUpdatedBy := ""
+		//_assemblyCreationDate - No change
+		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
+		//_assemblyCreatedBy - No change
+		_assemblyLastUpdatedBy := ""
 
-
-		//check if marble already exists
+		//get the Assembly
 		assemblyAsBytes, err := stub.GetState(_assemblyId)
-		if err != nil {
-		return nil, errors.New("Failed to get assembly Id")
-		}
-		res := AssemblyLine{}
-		json.Unmarshal(assemblyAsBytes, &res)
+		if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
+		if assemblyAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
+
+		assem := AssemblyLine{}
+		json.Unmarshal(assemblyAsBytes, &assem)
 
 		//update the AssemblyLine status
-		res.AssemblyStatus = _AssemblyStatus
-		res.AssemblyLastUpdatedOn = _AssemblyLastUpdateOn
+		assem.AssemblyId = _assemblyId
+		//assem.DeviceSerialNo = _deviceSerialNo
+		//assem.DeviceType = _deviceType
+		assem.FilamentBatchId = _filamentBatchId
+		assem.LedBatchId = _ledBatchId
+		assem.CircuitBoardBatchId = _circuitBoardBatchId
+		assem.WireBatchId = _wireBatchId
+		assem.CasingBatchId = _casingBatchId
+		assem.AdaptorBatchId = _adaptorBatchId
+		assem.StickPodBatchId = _stickPodBatchId
+		assem.ManufacturingPlant = _manufacturingPlant
+		assem.AssemblyStatus = _assemblyStatus
+		//assem.AssemblyCreationDate = _assemblyCreationDate
+		assem.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
+		//assem.AssemblyCreatedBy = _assemblyCreatedBy
+		assem.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
 
 		
-		
-		//str := `{ "assemblyStatus": "` + _AssemblyStatus + `", "assemblyLastUpdateOn": "` +  _AssemblyLastUpdateOn  + `"}`
-		//err := stub.PutState(_assemblyId, []byte(str))								
-		//write the status into the chaincode state
-
-		bytes, err := json.Marshal(res)
-
+		bytes, err := json.Marshal(assem)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
 
 		err = stub.PutState(_assemblyId, bytes)
-		
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
 
 		return nil, nil
 			
-		//return nil, nil
-
 }
 
 
@@ -249,7 +265,8 @@ func (t *TnT) getAssemblyByID(stub shim.ChaincodeStubInterface, args []string) (
 
 	_assemblyId := args[0]
 	
-	valAsbytes, err := stub.GetState(_assemblyId)									//get the var from chaincode state
+	//get the var from chaincode state
+	valAsbytes, err := stub.GetState(_assemblyId)									
 	if err != nil {
 		jsonResp := "{\"Error\":\"Failed to get state for " +  _assemblyId  + "\"}"
 		return nil, errors.New(jsonResp)
