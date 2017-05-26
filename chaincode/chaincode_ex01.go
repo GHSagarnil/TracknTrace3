@@ -107,8 +107,8 @@ func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []str
 //API to create an assembly
 func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 4 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 11. Got: %d.", len(args))
+	if len(args) != 12 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 12. Got: %d.", len(args))
 		}
 
 		//var columns []shim.Column
@@ -195,8 +195,8 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 //Update Assembly based on Id (Now only status)
 func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 2 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 2.")
+	if len(args) != 12 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 12.")
 	} 
 	
 		_assemblyId := args[0]
