@@ -330,11 +330,11 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 
 		
 		_caseId := args[0]
-		_holderAssemblyId:= args[1]
-		_chargerAssemblyId:=args[2]
-		_packageStatus:=args[3]
-		_packagingDate	:=args[4]
-		_shippingToAddress:=args[5]
+		_holderAssemblyId := args[1]
+		_chargerAssemblyId := args[2]
+		_packageStatus := args[3]
+		_packagingDate := args[4]
+		_shippingToAddress := args[5]
 
 		_time:= time.Now().Local()
 
@@ -429,6 +429,26 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 
 }
 
+//get the Package against ID
+func (t *TnT) getPackageByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting CaseId to query")
+	}
+
+	_caseId := args[0]
+	
+	//get the var from chaincode state
+	valAsbytes, err := stub.GetState(_caseId)									
+	if err != nil {
+		jsonResp := "{\"Error\":\"Failed to get state for " +  _caseId  + "\"}"
+		return nil, errors.New(jsonResp)
+	}
+
+	return valAsbytes, nil	
+
+}
+
 
 /*Standad Calls*/
 
@@ -453,6 +473,9 @@ func (t *TnT) Invoke(stub shim.ChaincodeStubInterface, function string, args []s
 	} else if function == "updateAssemblyByID" {
 		fmt.Printf("Function is updateAssemblyByID")
 		return t.updateAssemblyByID(stub, args)
+	}  else if function == "createPackage" {
+		fmt.Printf("Function is createPackage")
+		return t.createPackage(stub, args)
 	} 
 	return nil, errors.New("Received unknown function invocation")
 }
@@ -464,6 +487,9 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	if function == "getAssemblyByID" { 
 		t := TnT{}
 		return t.getAssemblyByID(stub, args)
+	} else if function == "getPackageByID" { 
+		t := TnT{}
+		return t.getPackageByID(stub, args)
 	}
 	
 	return nil, errors.New("Received unknown function query")
