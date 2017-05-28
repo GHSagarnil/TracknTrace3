@@ -600,6 +600,9 @@ func (t *TnT) Invoke(stub shim.ChaincodeStubInterface, function string, args []s
 	}  else if function == "createPackage" {
 		fmt.Printf("Function is createPackage")
 		return t.createPackage(stub, args)
+	} else if function == "updatePackage" {
+		fmt.Printf("Function is updatePackage")
+		return t.updatePackage(stub, args)
 	} 
 	return nil, errors.New("Received unknown function invocation")
 }
