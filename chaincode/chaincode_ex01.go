@@ -67,42 +67,15 @@ type PackageLine struct{
 	ChargerAssemblyId string `json:"chargerAssemblyId"`
 	PackageStatus string `json:"packageStatus"`
 	PackagingDate string `json:"packagingDate"`
-	PackageCreationDate string `json:"packagingCreationDate"`
-	PackageLastUpdatedOn string `json:"packageLastUpdateOn"`
 	ShippingToAddress string `json:"shippingToAddress"`
+	PackageCreationDate string `json:"packageCreationDate"`
+	PackageLastUpdatedOn string `json:"packageLastUpdateOn"`
 	PackageCreatedBy string `json:"packageCreatedBy"`
 	PackageLastUpdatedBy string `json:"packageLastUpdatedBy"`
 	}
 
-// Init initializes the smart contracts
-func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 
-/*	var _temp int;
-	var err error
-
-	if len(args) != 1 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1. Got: %d.", len(args))
-		}
-
-		// Initialize the chaincode
-	_temp, err = strconv.Atoi(args[0])
-	if err != nil {
-		return nil, errors.New("Expecting integer value ")
-	}
-	// Write the state to the ledger
-	err = stub.PutState("12345678", []byte(strconv.Itoa(_temp)))				
-	if err != nil {
-		return nil, err
-	}
-	var empty []string
-	jsonAsBytes, _ := json.Marshal(empty)								//marshal an emtpy array of strings to clear the index
-	err = stub.PutState(assemblyIndexStr, jsonAsBytes)
-	if err != nil {
-		return nil, err
-	}
-*/	
-	return nil, nil
-}
+/* Assembly Section */
 
 //API to create an assembly
 func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
@@ -185,14 +158,14 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 
 		err = stub.PutState("Assemblies", bytes)
 		if err != nil { return nil, errors.New("Unable to put the state") }
-*/
+	*/
 		fmt.Println("Created Assembly successfully")
 		
 		return nil, nil
 
 }
 
-//Update Assembly based on Id (Now only status)
+//Update Assembly based on Id - All except AssemblyId, DeviceSerialNo,DeviceType and AssemblyCreationDate and AssemblyCreatedBy
 func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
 	if len(args) != 12 {
@@ -226,8 +199,8 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		assem := AssemblyLine{}
 		json.Unmarshal(assemblyAsBytes, &assem)
 
-		//update the AssemblyLine status
-		assem.AssemblyId = _assemblyId
+		//update the AssemblyLine 
+		//assem.AssemblyId = _assemblyId
 		//assem.DeviceSerialNo = _deviceSerialNo
 		//assem.DeviceType = _deviceType
 		assem.FilamentBatchId = _filamentBatchId
@@ -256,6 +229,44 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 }
 
 
+//Update Assembly based on Id - AssemblyStatus
+func (t *TnT) updateAssemblyStatusByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2.")
+	} 
+	
+		_assemblyId := args[0]
+		_assemblyStatus:= args[1]
+		
+		_time:= time.Now().Local()
+		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
+		_assemblyLastUpdatedBy := ""
+
+		//get the Assembly
+		assemblyAsBytes, err := stub.GetState(_assemblyId)
+		if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
+		if assemblyAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
+
+		assem := AssemblyLine{}
+		json.Unmarshal(assemblyAsBytes, &assem)
+
+		//update the AssemblyLine status
+		assem.AssemblyStatus = _assemblyStatus
+		assem.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
+		assem.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+
+		
+		bytes, err := json.Marshal(assem)
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
+
+		err = stub.PutState(_assemblyId, bytes)
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+
+		return nil, nil
+			
+}
+
 //get the Assembly against ID
 func (t *TnT) getAssemblyByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
@@ -276,8 +287,7 @@ func (t *TnT) getAssemblyByID(stub shim.ChaincodeStubInterface, args []string) (
 
 }
 
-
-
+//get all Assemblies
 func (t *TnT) getAssemblies(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	
 	bytes, err := stub.GetState("Assemblies")
@@ -308,6 +318,127 @@ func (t *TnT) getAssemblies(stub shim.ChaincodeStubInterface, args []string) ([]
 	return mapB, nil
 }
 
+
+/* Package section*/
+
+//API to create an Package
+func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 6 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 6. Got: %d.", len(args))
+		}
+
+		
+		_caseId := args[0]
+		_holderAssemblyId:= args[1]
+		_chargerAssemblyId:=args[2]
+		_packageStatus:=args[3]
+		_packagingDate	:=args[4]
+		_shippingToAddress:=args[5]
+
+		_time:= time.Now().Local()
+
+		_packageCreationDate := _time.Format("2006-01-02")
+		_packageLastUpdatedOn := _time.Format("2006-01-02")
+		_packageCreatedBy := ""
+		_packageLastUpdatedBy := ""
+
+	//Checking if the Package already exists
+		packageAsBytes, err := stub.GetState(_caseId)
+		if err != nil { return nil, errors.New("Failed to get Package") }
+		if packageAsBytes != nil { return nil, errors.New("Package already exists") }
+
+		//setting the Package to create
+		pack := PackageLine{}
+		pack.CaseId = _caseId
+		pack.HolderAssemblyId = _holderAssemblyId
+		pack.ChargerAssemblyId = _chargerAssemblyId
+		pack.PackageStatus = _packageStatus
+		pack.PackagingDate = _packagingDate
+		pack.ShippingToAddress = _shippingToAddress
+		pack.PackageCreationDate = _packageCreationDate
+		pack.PackageLastUpdatedOn = _packageLastUpdatedOn
+		pack.PackageCreatedBy = _packageCreatedBy
+		pack.PackageLastUpdatedBy = _packageLastUpdatedBy
+
+		bytes, err := json.Marshal(pack)
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Package record: %s", err); return nil, errors.New("Error converting Package record") }
+
+		err = stub.PutState(_caseId, bytes)
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Package record: %s", err); return nil, errors.New("Error storing Package record") }
+
+		fmt.Println("Created Package successfully")
+
+		//Update Holder Assemblies to Packaged status
+		if 	len(_holderAssemblyId) > 0	{
+		_assemblyStatus:= "Packaged"
+		_time:= time.Now().Local()
+		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
+		_assemblyLastUpdatedBy := ""
+
+		//get the Assembly
+		assemblyHolderAsBytes, err := stub.GetState(_holderAssemblyId)
+		if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
+		if assemblyHolderAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
+
+		assemHolder := AssemblyLine{}
+		json.Unmarshal(assemblyHolderAsBytes, &assemHolder)
+
+		//update the AssemblyLine status
+		assemHolder.AssemblyStatus = _assemblyStatus
+		assemHolder.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
+		assemHolder.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+
+		
+		bytesHolder, err := json.Marshal(assemHolder)
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
+
+		err = stub.PutState(_holderAssemblyId, bytesHolder)
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+		}
+
+		//Update Charger Assemblies to Packaged status
+		if 	len(_chargerAssemblyId) > 0		{
+		_assemblyStatus:= "Packaged"
+		_time:= time.Now().Local()
+		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
+		_assemblyLastUpdatedBy := ""
+
+		//get the Assembly
+		assemblyChargerAsBytes, err := stub.GetState(_chargerAssemblyId)
+		if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
+		if assemblyChargerAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
+
+		assemCharger := AssemblyLine{}
+		json.Unmarshal(assemblyChargerAsBytes, &assemCharger)
+
+		//update the AssemblyLine status
+		assemCharger.AssemblyStatus = _assemblyStatus
+		assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
+		assemCharger.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+
+		
+		bytesCharger, err := json.Marshal(assemCharger)
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
+
+		err = stub.PutState(_chargerAssemblyId, bytesCharger)
+		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+		}
+
+		return nil, nil
+
+}
+
+
+/*Standad Calls*/
+
+// Init initializes the smart contracts
+func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+
+	return nil, nil
+
+}
+
 // Invoke callback representing the invocation of a chaincode
 func (t *TnT) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Printf("Invoke called, determining function")
@@ -326,7 +457,6 @@ func (t *TnT) Invoke(stub shim.ChaincodeStubInterface, function string, args []s
 	return nil, errors.New("Received unknown function invocation")
 }
 
-
 // query queries the chaincode
 func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Printf("Query called, determining function")
@@ -339,7 +469,8 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	return nil, errors.New("Received unknown function query")
 }
 
-	func main() {
+//main function
+func main() {
 	err := shim.Start(new(TnT))
 	if err != nil {
 		fmt.Printf("Error starting Simple chaincode: %s", err)
