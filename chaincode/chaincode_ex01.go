@@ -48,6 +48,7 @@ type AssemblyLine struct{
 	StickPodBatchId string `json:"stickPodBatchId"`
 	ManufacturingPlant string `json:"manufacturingPlant"`
 	AssemblyStatus string `json:"assemblyStatus"`
+	AssemblyDate string `json:"assemblyDate"` // New
 	AssemblyCreationDate string `json:"assemblyCreationDate"`
 	AssemblyLastUpdatedOn string `json:"assemblyLastUpdateOn"`
 	AssemblyCreatedBy string `json:"assemblyCreatedBy"`
@@ -82,8 +83,8 @@ type PackageLine struct{
 //API to create an assembly
 func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 12 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 12. Got: %d.", len(args))
+	if len(args) != 13 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 13. Got: %d.", len(args))
 		}
 
 		//var columns []shim.Column
@@ -105,6 +106,7 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		_stickPodBatchId:=args[9]
 		_manufacturingPlant:=args[10]
 		_assemblyStatus:= args[11]
+		_assemblyDate:= args[12]
 
 		_time:= time.Now().Local()
 
@@ -132,6 +134,7 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		assem.StickPodBatchId = _stickPodBatchId
 		assem.ManufacturingPlant = _manufacturingPlant
 		assem.AssemblyStatus = _assemblyStatus
+		assem.AssemblyDate = _assemblyDate
 		assem.AssemblyCreationDate = _assemblyCreationDate
 		assem.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 		assem.AssemblyCreatedBy = _assemblyCreatedBy
@@ -170,8 +173,8 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 //Update Assembly based on Id - All except AssemblyId, DeviceSerialNo,DeviceType and AssemblyCreationDate and AssemblyCreatedBy
 func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 12 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 12.")
+	if len(args) != 13 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 13.")
 	} 
 	
 		_assemblyId := args[0]
@@ -186,6 +189,7 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		_stickPodBatchId:=args[9]
 		_manufacturingPlant:=args[10]
 		_assemblyStatus:= args[11]
+		_assemblyDate:= args[12] 
 		
 		_time:= time.Now().Local()
 		//_assemblyCreationDate - No change
@@ -214,6 +218,7 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		assem.StickPodBatchId = _stickPodBatchId
 		assem.ManufacturingPlant = _manufacturingPlant
 		assem.AssemblyStatus = _assemblyStatus
+		assem.AssemblyDate = _assemblyDate
 		//assem.AssemblyCreationDate = _assemblyCreationDate
 		assem.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 		//assem.AssemblyCreatedBy = _assemblyCreatedBy
@@ -290,7 +295,7 @@ func (t *TnT) getAssemblyByID(stub shim.ChaincodeStubInterface, args []string) (
 }
 
 //get all Assemblies
-func (t *TnT) getAssemblies(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *TnT) getAllAssemblies(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	
 	bytes, err := stub.GetState("Assemblies")
 	if err != nil { return nil, errors.New("Unable to get Assemblies") }
@@ -327,8 +332,8 @@ func (t *TnT) getAssemblies(stub shim.ChaincodeStubInterface, args []string) ([]
 // Assemblies related to the package is updated with status = PACKAGED
 func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 6 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 6. Got: %d.", len(args))
+	if len(args) != 7 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 7. Got: %d.", len(args))
 		}
 
 		
@@ -338,6 +343,8 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 		_packageStatus := args[3]
 		_packagingDate := args[4]
 		_shippingToAddress := args[5]
+		// Status of associated Assemblies	
+		_assemblyStatus:= args[6]
 
 		_time:= time.Now().Local()
 
@@ -374,7 +381,7 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 
 		//Update Holder Assemblies to Packaged status
 		if 	len(_holderAssemblyId) > 0	{
-		_assemblyStatus:= "PACKAGED"
+		//_assemblyStatus:= "PACKAGED"
 		_time:= time.Now().Local()
 		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
 		_assemblyLastUpdatedBy := ""
@@ -402,7 +409,7 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 
 		//Update Charger Assemblies to Packaged status
 		if 	len(_chargerAssemblyId) > 0		{
-		_assemblyStatus:= "PACKAGED"
+		//_assemblyStatus:= "PACKAGED"
 		_time:= time.Now().Local()
 		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
 		_assemblyLastUpdatedBy := ""
@@ -437,17 +444,19 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 // Assemblies related to the package is updated with status sent as parameter
 func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 4 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 4. Got: %d.", len(args))
+	if len(args) != 7 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 7. Got: %d.", len(args))
 		}
 
 		
 		_caseId := args[0]
 		//_holderAssemblyId := args[1]
 		//_chargerAssemblyId := args[2]
-		_packageStatus := args[1]
+		_packageStatus := args[3]
 		//_packagingDate := args[4]
-		_shippingToAddress := args[2]
+		_shippingToAddress := args[5]
+		// Status of associated Assemblies	
+		_assemblyStatus := args[6]
 
 		_time:= time.Now().Local()
 
@@ -456,8 +465,6 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 		//_packageCreatedBy := ""
 		_packageLastUpdatedBy := ""
 
-		// Status of associated Assemblies	
-		_assemblyStatus := args[3]
 
 	//Checking if the Package already exists
 		packageAsBytes, err := stub.GetState(_caseId)
@@ -539,7 +546,6 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 		assemCharger.AssemblyStatus = _assemblyStatus
 		assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 		assemCharger.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
-
 		
 		bytesCharger, err := json.Marshal(assemCharger)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
@@ -574,7 +580,7 @@ func (t *TnT) getPackageByID(stub shim.ChaincodeStubInterface, args []string) ([
 }
 
 
-/*Standad Calls*/
+/*Standard Calls*/
 
 // Init initializes the smart contracts
 func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
@@ -617,6 +623,9 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getPackageByID" { 
 		t := TnT{}
 		return t.getPackageByID(stub, args)
+	} else if function == "getAllAssemblies" { 
+		t := TnT{}
+		return t.getAllAssemblies(stub, args)
 	}
 	
 	return nil, errors.New("Received unknown function query")
