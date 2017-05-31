@@ -80,6 +80,10 @@ type PackageLine struct{
 
 /* Assembly Section */
 
+type PackageCaseID_Holder struct {
+	PackageCaseIDs 	[]string `json:"packageCaseIDs"`
+}
+
 //API to create an assembly
 func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
@@ -438,6 +442,26 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
 		}
 
+	/* GetAll changes-------------------------starts--------------------------*/
+		// Holding the PackageCaseIDs in State separately
+		bytesPackageCaseHolder, err := stub.GetState("Packages")
+		if err != nil { return nil, errors.New("Unable to get Packages") }
+
+		var packageCaseID_Holder PackageCaseID_Holder
+
+		err = json.Unmarshal(bytesPackageCaseHolder, &packageCaseID_Holder)
+		if err != nil {	return nil, errors.New("Corrupt Packages record") }
+
+		packageCaseID_Holder.PackageCaseIDs = append(packageCaseID_Holder.PackageCaseIDs, _caseId)
+		
+		bytesPackageCaseHolder, err = json.Marshal(packageCaseID_Holder)
+		if err != nil { return nil, errors.New("Error creating PackageCaseID_Holder record") }
+
+		err = stub.PutState("Packages", bytesPackageCaseHolder)
+		if err != nil { return nil, errors.New("Unable to put the state") }
+	/* GetAll changes---------------------------ends------------------------ */
+
+
 		return nil, nil
 
 }
@@ -582,6 +606,40 @@ func (t *TnT) getPackageByID(stub shim.ChaincodeStubInterface, args []string) ([
 
 }
 
+//get all Packages
+func (t *TnT) getAllPackages(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
+	bytesPackageCaseHolder, err := stub.GetState("Packages")
+	if err != nil { return nil, errors.New("Unable to get Packages") }
+
+	var packageCaseID_Holder PackageCaseID_Holder
+
+	err = json.Unmarshal(bytesPackageCaseHolder, &packageCaseID_Holder)
+	if err != nil {	return nil, errors.New("Corrupt Assemblies") }
+
+	res2E:= []*PackageLine{}	
+
+	for _, caseId := range packageCaseID_Holder.PackageCaseIDs {
+
+		//Get the existing AssemblyLine
+		packageAsBytes, err := stub.GetState(caseId)
+		if err != nil { return nil, errors.New("Failed to get Assembly")}
+
+		if packageAsBytes != nil { 
+		res := new(PackageLine)
+		json.Unmarshal(packageAsBytes, &res)
+
+		// Append Assembly to Assembly Array
+		res2E=append(res2E,res)
+		} // If ends
+		} // For ends
+
+    mapB, _ := json.Marshal(res2E)
+    //fmt.Println(string(mapB))
+	return mapB, nil
+}
+
+
 //AllAssemblyIDS
 //get the all Assembly IDs from AssemblyID_Holder - To Test only
 func (t *TnT) getAllAssemblyIDs(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
@@ -597,6 +655,22 @@ func (t *TnT) getAllAssemblyIDs(stub shim.ChaincodeStubInterface, args []string)
 
 }
 
+//AllPackageCaseIDs
+//get the all Package CaseIDs from PackageCaseID_Holder - To Test only
+func (t *TnT) getAllPackageCaseIDs(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 0 {
+		return nil, errors.New("Incorrect number of arguments. Expecting zero argument to query")
+	}
+
+	bytesPackageCaseHolder, err := stub.GetState("Packages")
+		if err != nil { return nil, errors.New("Unable to get Packages") }
+
+	return bytesPackageCaseHolder, nil	
+
+}
+
+
 /*Standard Calls*/
 
 // Init initializes the smart contracts
@@ -605,18 +679,21 @@ func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []str
 	/* GetAll changes-------------------------starts--------------------------*/
 
 	var assemID_Holder AssemblyID_Holder
-	
-	// Adding a dummy assembly to test
+/*	// Adding a dummy assembly to test
 	if len(args) != 0 {
 			_assemblyId := args[0]
 			assemID_Holder.AssemblyIDs = append(assemID_Holder.AssemblyIDs, _assemblyId)
 		}
-
-	bytes, err := json.Marshal(assemID_Holder)
-
+*/
+	bytesAssembly, err := json.Marshal(assemID_Holder)
     if err != nil { return nil, errors.New("Error creating assemID_Holder record") }
+	err = stub.PutState("Assemblies", bytesAssembly)
 
-	err = stub.PutState("Assemblies", bytes)
+	var packageCaseID_Holder PackageCaseID_Holder
+	bytesPackage, err := json.Marshal(packageCaseID_Holder)
+    if err != nil { return nil, errors.New("Error creating packageCaseID_Holder record") }
+	err = stub.PutState("Packages", bytesPackage)
+	
 	/* GetAll changes---------------------------ends------------------------ */
 
 	return nil, nil
@@ -660,12 +737,18 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getAllAssemblies" { 
 		t := TnT{}
 		return t.getAllAssemblies(stub, args)
-	} else if function == "getAllAssemblyIDs" { 
+	} else if function == "getAllAssemblies" { 
+		t := TnT{}
+		return t.getAllPackages(stub, args)
+	} else if function == "getAllPackages" { 
 		t := TnT{}
 		return t.getAllAssemblyIDs(stub, args)
+	} else if function == "getAllPackageCaseIDs" { 
+		t := TnT{}
+		return t.getAllPackageCaseIDs(stub, args)
 	}
 
-	
+
 	return nil, errors.New("Received unknown function query")
 }
 
