@@ -146,24 +146,25 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		err = stub.PutState(_assemblyId, bytes)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
 
-	/*
+	/* GetAll changes-------------------------starts--------------------------*/
 		// Holding the AssemblyIDs in State separately
-		bytes, err = stub.GetState("Assemblies")
+		bytesAssemHolder, err := stub.GetState("Assemblies")
 		if err != nil { return nil, errors.New("Unable to get Assemblies") }
 
-		var assemIDs AssemblyID_Holder
+		var assemID_Holder AssemblyID_Holder
 
-		err = json.Unmarshal(bytes, &assemIDs)
+		err = json.Unmarshal(bytesAssemHolder, &assemID_Holder)
 		if err != nil {	return nil, errors.New("Corrupt Assemblies record") }
 
-		assemIDs.AssemblyIDs = append(assemIDs.AssemblyIDs, _assemblyId)
+		assemID_Holder.AssemblyIDs = append(assemID_Holder.AssemblyIDs, _assemblyId)
 		
-		bytes, err = json.Marshal(assemIDs)
+		bytesAssemHolder, err = json.Marshal(assemID_Holder)
 		if err != nil { return nil, errors.New("Error creating Assembly_Holder record") }
 
-		err = stub.PutState("Assemblies", bytes)
+		err = stub.PutState("Assemblies", bytesAssemHolder)
 		if err != nil { return nil, errors.New("Unable to put the state") }
-	*/
+	/* GetAll changes---------------------------ends------------------------ */
+		
 		fmt.Println("Created Assembly successfully")
 		
 		return nil, nil
@@ -178,7 +179,7 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 	} 
 	
 		_assemblyId := args[0]
-		//_deviceSerialNo:= args[1] - No Change
+		_deviceSerialNo:= args[1]
 		//_deviceType:=args[2] - No Change
 		_filamentBatchId:=args[3]
 		_ledBatchId:=args[4]
@@ -207,7 +208,7 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 
 		//update the AssemblyLine 
 		//assem.AssemblyId = _assemblyId
-		//assem.DeviceSerialNo = _deviceSerialNo
+		assem.DeviceSerialNo = _deviceSerialNo
 		//assem.DeviceType = _deviceType
 		assem.FilamentBatchId = _filamentBatchId
 		assem.LedBatchId = _ledBatchId
@@ -300,25 +301,27 @@ func (t *TnT) getAllAssemblies(stub shim.ChaincodeStubInterface, args []string) 
 	bytes, err := stub.GetState("Assemblies")
 	if err != nil { return nil, errors.New("Unable to get Assemblies") }
 
-	var assemblyIDs AssemblyID_Holder
+	var assemID_Holder AssemblyID_Holder
 
-	err = json.Unmarshal(bytes, &assemblyIDs)
+	err = json.Unmarshal(bytes, &assemID_Holder)
 	if err != nil {	return nil, errors.New("Corrupt Assemblies") }
 
 	res2E:= []*AssemblyLine{}	
 
-	for _, assemblyId := range assemblyIDs.AssemblyIDs {
+	for _, assemblyId := range assemID_Holder.AssemblyIDs {
 
 		//Get the existing AssemblyLine
 		assemblyAsBytes, err := stub.GetState(assemblyId)
-		if err != nil { return nil, errors.New("Failed to get Assembly")	}
+		if err != nil { return nil, errors.New("Failed to get Assembly")}
 
+		if assemblyAsBytes != nil { 
 		res := new(AssemblyLine)
 		json.Unmarshal(assemblyAsBytes, &res)
 
 		// Append Assembly to Assembly Array
 		res2E=append(res2E,res)
-		}
+		} // If ends
+		} // For ends
 
     mapB, _ := json.Marshal(res2E)
     //fmt.Println(string(mapB))
@@ -579,11 +582,42 @@ func (t *TnT) getPackageByID(stub shim.ChaincodeStubInterface, args []string) ([
 
 }
 
+//AllAssemblyIDS
+//get the all Assembly IDs from AssemblyID_Holder - To Test only
+func (t *TnT) getAllAssemblyIDs(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 0 {
+		return nil, errors.New("Incorrect number of arguments. Expecting zero argument to query")
+	}
+
+	bytesAssemHolder, err := stub.GetState("Assemblies")
+		if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+	return bytesAssemHolder, nil	
+
+}
 
 /*Standard Calls*/
 
 // Init initializes the smart contracts
 func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+
+	/* GetAll changes-------------------------starts--------------------------*/
+
+	var assemID_Holder AssemblyID_Holder
+	
+	// Adding a dummy assembly to test
+	if len(args) != 0 {
+			_assemblyId := args[0]
+			assemID_Holder.AssemblyIDs = append(assemID_Holder.AssemblyIDs, _assemblyId)
+		}
+
+	bytes, err := json.Marshal(assemID_Holder)
+
+    if err != nil { return nil, errors.New("Error creating assemID_Holder record") }
+
+	err = stub.PutState("Assemblies", bytes)
+	/* GetAll changes---------------------------ends------------------------ */
 
 	return nil, nil
 
@@ -626,7 +660,11 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getAllAssemblies" { 
 		t := TnT{}
 		return t.getAllAssemblies(stub, args)
+	} else if function == "getAllAssemblyIDs" { 
+		t := TnT{}
+		return t.getAllAssemblyIDs(stub, args)
 	}
+
 	
 	return nil, errors.New("Received unknown function query")
 }
