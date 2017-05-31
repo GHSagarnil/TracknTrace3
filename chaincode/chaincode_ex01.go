@@ -670,7 +670,6 @@ func (t *TnT) getAllPackageCaseIDs(stub shim.ChaincodeStubInterface, args []stri
 
 }
 
-
 /*Standard Calls*/
 
 // Init initializes the smart contracts
@@ -679,17 +678,22 @@ func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []str
 	/* GetAll changes-------------------------starts--------------------------*/
 
 	var assemID_Holder AssemblyID_Holder
-/*	// Adding a dummy assembly to test
+	// Adding a dummy assembly to test
 	if len(args) != 0 {
 			_assemblyId := args[0]
 			assemID_Holder.AssemblyIDs = append(assemID_Holder.AssemblyIDs, _assemblyId)
 		}
-*/
+
 	bytesAssembly, err := json.Marshal(assemID_Holder)
     if err != nil { return nil, errors.New("Error creating assemID_Holder record") }
 	err = stub.PutState("Assemblies", bytesAssembly)
 
 	var packageCaseID_Holder PackageCaseID_Holder
+	// Adding a dummy package to test
+	if len(args) != 0 {
+			_packageId := args[0]
+			packageCaseID_Holder.PackageCaseIDs = append(packageCaseID_Holder.PackageCaseIDs, _packageId)
+		}
 	bytesPackage, err := json.Marshal(packageCaseID_Holder)
     if err != nil { return nil, errors.New("Error creating packageCaseID_Holder record") }
 	err = stub.PutState("Packages", bytesPackage)
@@ -737,10 +741,10 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getAllAssemblies" { 
 		t := TnT{}
 		return t.getAllAssemblies(stub, args)
-	} else if function == "getAllAssemblies" { 
+	} else if function == "getAllPackages" { 
 		t := TnT{}
 		return t.getAllPackages(stub, args)
-	} else if function == "getAllPackages" { 
+	} else if function == "getAllAssemblyIDs" { 
 		t := TnT{}
 		return t.getAllAssemblyIDs(stub, args)
 	} else if function == "getAllPackageCaseIDs" { 
