@@ -32,6 +32,15 @@ import (
 type TnT struct {
 }
 
+
+//==============================================================================================================================
+//	 Participant types - Each participant type is mapped to an integer which we use to compare to the value stored in a
+//						 user's eCert
+//==============================================================================================================================
+//CURRENT WORKAROUND USES ROLES CHANGE WHEN OWN USERS CAN BE CREATED SO THAT IT READ 1, 2, 3, 4, 5
+const   ASSEMBLYLINE_ROLE  =  "assemblyline_role"
+const   PACKAGELINE_ROLE   =  "packageline_role"
+
 // Assembly Line Structure
 type AssemblyLine struct{	
 	AssemblyId string `json:"assemblyId"`
@@ -300,6 +309,25 @@ func (t *TnT) getAssemblyByID(stub shim.ChaincodeStubInterface, args []string) (
 //get all Assemblies
 func (t *TnT) getAllAssemblies(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	
+	/* Access check -------------------------------------------- Starts*/
+	if len(args) != 1 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 1.")
+		}
+	user_name := args[0]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != ASSEMBLYLINE_ROLE {
+			return nil, errors.New("Permission denied not AssemblyLine Role")
+		}
+	}
+/* Access check -------------------------------------------- Ends*/
+
 	bytes, err := stub.GetState("Assemblies")
 	if err != nil { return nil, errors.New("Unable to get Assemblies") }
 
@@ -606,7 +634,26 @@ func (t *TnT) getPackageByID(stub shim.ChaincodeStubInterface, args []string) ([
 
 //get all Packages
 func (t *TnT) getAllPackages(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	
+
+/* Access check -------------------------------------------- Starts*/
+	if len(args) != 1 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 1.")
+		}
+	user_name := args[0]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != PACKAGELINE_ROLE {
+			return nil, errors.New("Permission denied not PackageLine Role")
+		}
+	}
+/* Access check -------------------------------------------- Ends*/
+
 	bytesPackageCaseHolder, err := stub.GetState("Packages")
 	if err != nil { return nil, errors.New("Unable to get Packages") }
 
@@ -668,6 +715,41 @@ func (t *TnT) getAllPackageCaseIDs(stub shim.ChaincodeStubInterface, args []stri
 
 }
 
+
+//Security & Access
+
+//==============================================================================================================================
+//	 General Functions
+//==============================================================================================================================
+//	 get_ecert - Takes the name passed and calls out to the REST API for HyperLedger to retrieve the ecert
+//				 for that user. Returns the ecert as retrived including html encoding.
+//==============================================================================================================================
+func (t *TnT) get_ecert(stub shim.ChaincodeStubInterface, name string) ([]byte, error) {
+
+	ecert, err := stub.GetState(name)
+
+	if err != nil { return nil, errors.New("Couldn't retrieve ecert for user " + name) }
+
+	return ecert, nil
+}
+
+
+//==============================================================================================================================
+//	 add_ecert - Adds a new ecert and user pair to the table of ecerts
+//==============================================================================================================================
+
+func (t *TnT) add_ecert(stub shim.ChaincodeStubInterface, name string, ecert string) ([]byte, error) {
+
+	err := stub.PutState(name, []byte(ecert))
+
+	if err == nil {
+		return nil, errors.New("Error storing eCert for user " + name + " identity: " + ecert)
+	}
+
+	return nil, nil
+
+}
+
 /*Standard Calls*/
 
 // Init initializes the smart contracts
@@ -676,27 +758,37 @@ func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []str
 	/* GetAll changes-------------------------starts--------------------------*/
 
 	var assemID_Holder AssemblyID_Holder
+	/*
 	// Adding a dummy assembly to test
 	if len(args) != 0 {
 			_assemblyId := args[0]
 			assemID_Holder.AssemblyIDs = append(assemID_Holder.AssemblyIDs, _assemblyId)
 		}
+	*/	
 
 	bytesAssembly, err := json.Marshal(assemID_Holder)
     if err != nil { return nil, errors.New("Error creating assemID_Holder record") }
 	err = stub.PutState("Assemblies", bytesAssembly)
 
 	var packageCaseID_Holder PackageCaseID_Holder
+	/*
 	// Adding a dummy package to test
 	if len(args) != 0 {
 			_packageId := args[0]
 			packageCaseID_Holder.PackageCaseIDs = append(packageCaseID_Holder.PackageCaseIDs, _packageId)
 		}
+	*/
 	bytesPackage, err := json.Marshal(packageCaseID_Holder)
     if err != nil { return nil, errors.New("Error creating packageCaseID_Holder record") }
 	err = stub.PutState("Packages", bytesPackage)
 	
 	/* GetAll changes---------------------------ends------------------------ */
+
+	// creating minimum default user and roles
+	//"AssemblyLine_User1","assemblyline_role","PackageLine_User1", "packageline_role"
+	for i:=0; i < len(args); i=i+2 {
+		t.add_ecert(stub, args[i], args[i+1])
+	}
 
 	return nil, nil
 
