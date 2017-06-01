@@ -35,11 +35,14 @@ type TnT struct {
 
 //==============================================================================================================================
 //	 Participant types - Each participant type is mapped to an integer which we use to compare to the value stored in a
-//						 user's eCert
+//						 user's eCert and Specific Assembly Statuses
 //==============================================================================================================================
-//CURRENT WORKAROUND USES ROLES CHANGE WHEN OWN USERS CAN BE CREATED SO THAT IT READ 1, 2, 3, 4, 5
-const   ASSEMBLYLINE_ROLE  =  "assemblyline_role"
-const   PACKAGELINE_ROLE   =  "packageline_role"
+const   ASSEMBLYLINE_ROLE  		=	"assemblyline_role"
+const   PACKAGELINE_ROLE   		=	"packageline_role"
+const   ASSEMBLYSTATUS_RFP   	=	"Ready For Packaging"
+const  ASSEMBLYSTATUS_PKG 		=	"Packaged" 
+const  ASSEMBLYSTATUS_SFS 		=	"Sent For Shipment"
+
 
 // Assembly Line Structure
 type AssemblyLine struct{	
@@ -94,9 +97,25 @@ type PackageCaseID_Holder struct {
 //API to create an assembly
 func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 13 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 13. Got: %d.", len(args))
+	if len(args) != 14 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 14. Got: %d.", len(args))
 		}
+
+	/* Access check -------------------------------------------- Starts*/
+	user_name := args[13]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != ASSEMBLYLINE_ROLE {
+			return nil, errors.New("Permission denied not AssemblyLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
 
 		//var columns []shim.Column
 		//_assemblyId:= rand.New(rand.NewSource(99)).Int31
@@ -185,10 +204,11 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 //Update Assembly based on Id - All except AssemblyId, DeviceSerialNo,DeviceType and AssemblyCreationDate and AssemblyCreatedBy
 func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 13 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 13.")
+	if len(args) != 14 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 14.")
 	} 
 	
+
 		_assemblyId := args[0]
 		_deviceSerialNo:= args[1]
 		//_deviceType:=args[2] - No Change
@@ -217,6 +237,35 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		assem := AssemblyLine{}
 		json.Unmarshal(assemblyAsBytes, &assem)
 
+
+	/* Access check -------------------------------------------- Starts*/
+	user_name := args[13]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role == ASSEMBLYLINE_ROLE 					&&
+		(assem.AssemblyStatus == ASSEMBLYSTATUS_RFP 		||
+		assem.AssemblyStatus == ASSEMBLYSTATUS_PKG 			||
+		assem.AssemblyStatus == ASSEMBLYSTATUS_SFS) 		{
+			return nil, errors.New("Permission denied for AssemblyLine Role to update Assembly if status = Ready For Packaging or Packaged or Sent For Shipment")
+		}
+		
+		if user_role == PACKAGELINE_ROLE 					&&
+		(assem.AssemblyStatus != ASSEMBLYSTATUS_RFP 		&&
+		assem.AssemblyStatus != ASSEMBLYSTATUS_PKG 			&&
+		assem.AssemblyStatus != ASSEMBLYSTATUS_SFS) 		{
+			return nil, errors.New("Permission denied for PackageLine Role to update Assembly if status not = Ready For Packaging or Packaged or Sent For Shipment")
+		}
+		
+	}
+	/* Access check -------------------------------------------- Ends*/
+
+
 		//update the AssemblyLine 
 		//assem.AssemblyId = _assemblyId
 		assem.DeviceSerialNo = _deviceSerialNo
@@ -235,6 +284,7 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		assem.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 		//assem.AssemblyCreatedBy = _assemblyCreatedBy
 		assem.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+
 
 		
 		bytes, err := json.Marshal(assem)
@@ -326,7 +376,7 @@ func (t *TnT) getAllAssemblies(stub shim.ChaincodeStubInterface, args []string) 
 			return nil, errors.New("Permission denied not AssemblyLine Role")
 		}
 	}
-/* Access check -------------------------------------------- Ends*/
+	/* Access check -------------------------------------------- Ends*/
 
 	bytes, err := stub.GetState("Assemblies")
 	if err != nil { return nil, errors.New("Unable to get Assemblies") }
@@ -365,11 +415,26 @@ func (t *TnT) getAllAssemblies(stub shim.ChaincodeStubInterface, args []string) 
 // Assemblies related to the package is updated with status = PACKAGED
 func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 7 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 7. Got: %d.", len(args))
+	if len(args) != 8 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 8. Got: %d.", len(args))
 		}
 
-		
+	/* Access check -------------------------------------------- Starts*/
+	user_name := args[7]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != PACKAGELINE_ROLE {
+			return nil, errors.New("Permission denied not PackageLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+	
 		_caseId := args[0]
 		_holderAssemblyId := args[1]
 		_chargerAssemblyId := args[2]
@@ -497,10 +562,25 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 // Assemblies related to the package is updated with status sent as parameter
 func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 7 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 7. Got: %d.", len(args))
+	if len(args) != 8 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 8. Got: %d.", len(args))
 		}
 
+	/* Access check -------------------------------------------- Starts*/
+	user_name := args[7]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != PACKAGELINE_ROLE {
+			return nil, errors.New("Permission denied not PackageLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
 		
 		_caseId := args[0]
 		//_holderAssemblyId := args[1]
@@ -635,7 +715,7 @@ func (t *TnT) getPackageByID(stub shim.ChaincodeStubInterface, args []string) ([
 //get all Packages
 func (t *TnT) getAllPackages(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-/* Access check -------------------------------------------- Starts*/
+	/* Access check -------------------------------------------- Starts*/
 	if len(args) != 1 {
 			return nil, errors.New("Incorrect number of arguments. Expecting 1.")
 		}
@@ -652,7 +732,7 @@ func (t *TnT) getAllPackages(stub shim.ChaincodeStubInterface, args []string) ([
 			return nil, errors.New("Permission denied not PackageLine Role")
 		}
 	}
-/* Access check -------------------------------------------- Ends*/
+	/* Access check -------------------------------------------- Ends*/
 
 	bytesPackageCaseHolder, err := stub.GetState("Packages")
 	if err != nil { return nil, errors.New("Unable to get Packages") }
@@ -840,7 +920,9 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getAllPackageCaseIDs" { 
 		t := TnT{}
 		return t.getAllPackageCaseIDs(stub, args)
-	}
+	} else if function == "get_ecert" {
+		return t.get_ecert(stub, args[0])
+	} 
 
 
 	return nil, errors.New("Received unknown function query")
