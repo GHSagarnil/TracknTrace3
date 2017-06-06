@@ -1010,7 +1010,14 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 		t := TnT{}
 		return t.getAllPackageCaseIDs(stub, args)
 	} else if function == "get_ecert" {
+		t := TnT{}
 		return t.get_ecert(stub, args[0])
+	} else if function == "validateCreateAssembly" {
+		t := TnT{}
+		return t.validateCreateAssembly(stub, args)
+	} else if function == "validateUpdateAssembly" {
+		t := TnT{}
+		return t.validateUpdateAssembly(stub, args)
 	} 
 
 
