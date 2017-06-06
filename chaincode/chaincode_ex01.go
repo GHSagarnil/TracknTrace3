@@ -39,10 +39,10 @@ type TnT struct {
 //==============================================================================================================================
 const   ASSEMBLYLINE_ROLE  		=	"assemblyline_role"
 const   PACKAGELINE_ROLE   		=	"packageline_role"
-const   ASSEMBLYSTATUS_RFP   	=	"Ready For Packaging"
-const  ASSEMBLYSTATUS_PKG 		=	"Packaged" 
-const  ASSEMBLYSTATUS_SFS 		=	"Sent For Shipment"
-
+const   ASSEMBLYSTATUS_RFP   	=	"6" //Ready For Packaging"
+const  	ASSEMBLYSTATUS_PKG 		=	"7" //Packaged" 
+const  	ASSEMBLYSTATUS_CAN 		=	"8" //Cancelled"
+const  	ASSEMBLYSTATUS_QAF 		=	"2" //QA Failed"
 
 // Assembly Line Structure
 type AssemblyLine struct{	
@@ -142,8 +142,8 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 
 		_assemblyCreationDate := _time.Format("2006-01-02")
 		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
-		_assemblyCreatedBy := ""
-		_assemblyLastUpdatedBy := ""
+		_assemblyCreatedBy := user_name
+		_assemblyLastUpdatedBy := user_name
 
 	//Checking if the Assembly already exists
 		assemblyAsBytes, err := stub.GetState(_assemblyId)
@@ -227,7 +227,7 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		//_assemblyCreationDate - No change
 		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
 		//_assemblyCreatedBy - No change
-		_assemblyLastUpdatedBy := ""
+		_assemblyLastUpdatedBy := args[13]
 
 		//get the Assembly
 		assemblyAsBytes, err := stub.GetState(_assemblyId)
@@ -245,8 +245,8 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 	if len(user_name) > 0 {
 		ecert_role, err := t.get_ecert(stub, user_name)
 		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
-		if ecert_role == nil {return nil, errors.New("username not defined")}
-
+		if ecert_role == nil {return nil, errors.New("username not defined")}	
+	/*
 		user_role := string(ecert_role)
 		if user_role == ASSEMBLYLINE_ROLE 					&&
 		(assem.AssemblyStatus == ASSEMBLYSTATUS_RFP 		||
@@ -261,7 +261,7 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		assem.AssemblyStatus != ASSEMBLYSTATUS_SFS) 		{
 			return nil, errors.New("Permission denied for PackageLine Role to update Assembly if status not = Ready For Packaging or Packaged or Sent For Shipment")
 		}
-		
+	*/		
 	}
 	/* Access check -------------------------------------------- Ends*/
 
@@ -762,6 +762,95 @@ func (t *TnT) getAllPackages(stub shim.ChaincodeStubInterface, args []string) ([
     mapB, _ := json.Marshal(res2E)
     //fmt.Println(string(mapB))
 	return mapB, nil
+}
+
+
+//All Validators to be called before Invoke
+
+// Validator before createAssembly invoke call
+func (t *TnT) validateCreateAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 14 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 14. Got: %d.", len(args))
+		}
+
+	/* Access check -------------------------------------------- Starts*/
+	user_name := args[13]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != ASSEMBLYLINE_ROLE {
+			return nil, errors.New("Permission denied not AssemblyLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+
+	
+	//Checking if the Assembly already exists
+	_assemblyId := args[0]
+	assemblyAsBytes, err := stub.GetState(_assemblyId)
+	if err != nil { return nil, errors.New("Failed to get assembly Id") }
+	if assemblyAsBytes != nil { return nil, errors.New("Assembly already exists") }
+	
+	//No validation error proceed to call Invoke command
+	return nil, nil
+}
+
+// Validator before createAssembly invoke call
+func (t *TnT) validateUpdateAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 14 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 14.")
+		} 
+	
+
+	_assemblyId := args[0]
+	_assemblyStatus:= args[11]
+
+	//get the Assembly
+	assemblyAsBytes, err := stub.GetState(_assemblyId)
+	if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
+	if assemblyAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
+
+	assem := AssemblyLine{}
+	json.Unmarshal(assemblyAsBytes, &assem)
+
+
+	/* Access check -------------------------------------------- Starts*/
+	user_name := args[13]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+
+		// AssemblyLine can't edit an Assembly in certain statuses
+		if (user_role == ASSEMBLYLINE_ROLE 					&&
+		(assem.AssemblyStatus == ASSEMBLYSTATUS_RFP 		||
+		assem.AssemblyStatus == ASSEMBLYSTATUS_PKG 			||
+		assem.AssemblyStatus == ASSEMBLYSTATUS_CAN)) 		{
+			return nil, errors.New("Permission denied for AssemblyLine Role to update Assembly if status = 'Ready For Packaging' or 'Packaged' or 'Cancelled'")
+		}
+		
+		// AssemblyLine user can't move an AssemblyLine from QA Failed to Ready For packaging status
+		if (user_role 			== ASSEMBLYLINE_ROLE 		&&
+		assem.AssemblyStatus 	== ASSEMBLYSTATUS_QAF 		&&
+		_assemblyStatus		 	== ASSEMBLYSTATUS_RFP) 		{
+			return nil, errors.New("Permission denied for updating AssemblyLine with status = 'QA Failed' to 'Ready For Packaging' status")
+		}
+		
+	}
+	/* Access check -------------------------------------------- Ends*/	
+	//No validation error proceed to call Invoke command
+	return nil, nil
 }
 
 
