@@ -715,6 +715,7 @@ func (t *TnT) getPackageByID(stub shim.ChaincodeStubInterface, args []string) ([
 //get all Packages
 func (t *TnT) getAllPackages(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
+
 	/* Access check -------------------------------------------- Starts*/
 	if len(args) != 1 {
 			return nil, errors.New("Incorrect number of arguments. Expecting 1.")
@@ -785,7 +786,7 @@ func (t *TnT) validateCreateAssembly(stub shim.ChaincodeStubInterface, args []st
 
 		user_role := string(ecert_role)
 		if user_role != ASSEMBLYLINE_ROLE {
-			return nil, errors.New("Permission denied not AssemblyLine Role")
+			return nil, errors.New("Permission denied, not an AssemblyLine Role")
 		}
 	}
 	/* Access check -------------------------------------------- Ends*/
@@ -832,12 +833,13 @@ func (t *TnT) validateUpdateAssembly(stub shim.ChaincodeStubInterface, args []st
 
 		user_role := string(ecert_role)
 
+		if user_role != ASSEMBLYLINE_ROLE {
+			return nil, errors.New("Permission denied, not an AssemblyLine Role")
+		}
 		// AssemblyLine can't edit an Assembly in certain statuses
-		if (user_role == ASSEMBLYLINE_ROLE 					&&
-		(assem.AssemblyStatus == ASSEMBLYSTATUS_RFP 		||
-		assem.AssemblyStatus == ASSEMBLYSTATUS_PKG 			||
-		assem.AssemblyStatus == ASSEMBLYSTATUS_CAN)) 		{
-			return nil, errors.New("Permission denied for AssemblyLine Role to update Assembly if status = 'Ready For Packaging' or 'Packaged' or 'Cancelled'")
+		if (user_role 			== ASSEMBLYLINE_ROLE 		&&
+		assem.AssemblyStatus 	== ASSEMBLYSTATUS_RFP) 		{
+			return nil, errors.New("Permission denied for AssemblyLine Role to update Assembly if status = 'Ready For Packaging'")
 		}
 		
 		// AssemblyLine user can't move an AssemblyLine from QA Failed to Ready For packaging status
@@ -853,6 +855,71 @@ func (t *TnT) validateUpdateAssembly(stub shim.ChaincodeStubInterface, args []st
 	return nil, nil
 }
 
+// Validator before createPackage invoke call
+func (t *TnT) validateCreatePackage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+		if len(args) != 8 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 8. Got: %d.", len(args))
+		}
+
+	/* Access check -------------------------------------------- Starts*/
+	user_name := args[7]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != PACKAGELINE_ROLE {
+			return nil, errors.New("Permission denied not PackageLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+	
+	//Checking if the Package already exists
+		_caseId := args[0]
+		packageAsBytes, err := stub.GetState(_caseId)
+		if err != nil { return nil, errors.New("Failed to get Package") }
+		if packageAsBytes != nil { return nil, errors.New("Package already exists") }
+	
+	//No validation error proceed to call Invoke command
+	return nil, nil
+}
+
+// Validator before createAssembly invoke call
+func (t *TnT) validateUpdatePackage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 8 {
+				return nil, fmt.Errorf("Incorrect number of arguments. Expecting 8. Got: %d.", len(args))
+			}
+
+		/* Access check -------------------------------------------- Starts*/
+		user_name := args[7]
+		if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+		if len(user_name) > 0 {
+			ecert_role, err := t.get_ecert(stub, user_name)
+			if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+			if ecert_role == nil {return nil, errors.New("username not defined")}
+
+			user_role := string(ecert_role)
+			if user_role != PACKAGELINE_ROLE {
+				return nil, errors.New("Permission denied not PackageLine Role")
+			}
+		}
+		/* Access check -------------------------------------------- Ends*/
+			
+		//Checking if the Package already exists
+		_caseId := args[0]
+		packageAsBytes, err := stub.GetState(_caseId)
+		if err != nil { return nil, errors.New("Failed to get Package") }
+		if packageAsBytes == nil { return nil, errors.New("Package doesn't exists") }
+		
+	//No validation error proceed to call Invoke command
+	return nil, nil
+}
 
 //AllAssemblyIDS
 //get the all Assembly IDs from AssemblyID_Holder - To Test only
@@ -1018,6 +1085,12 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "validateUpdateAssembly" {
 		t := TnT{}
 		return t.validateUpdateAssembly(stub, args)
+	} else if function == "validateCreatePackage" {
+		t := TnT{}
+		return t.validateCreatePackage(stub, args)
+	} else if function == "validateUpdatePackage" {
+		t := TnT{}
+		return t.validateUpdatePackage(stub, args)
 	} 
 
 
