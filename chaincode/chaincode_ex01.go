@@ -321,6 +321,26 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		err = stub.PutState(_assemblyId, bytes)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
 
+
+		/* AssemblyLine history ------------------------------------------Starts */
+		assemLine_HolderKey := _assemblyId + "H" // Indicates History Key for Assembly with ID = _assemblyId
+		bytesAssemblyLines, err := stub.GetState(assemLine_HolderKey)
+		if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+		var assemLine_Holder AssemblyLine_Holder
+
+		err = json.Unmarshal(bytesAssemblyLines, &assemLine_Holder)
+		if err != nil {	return nil, errors.New("Corrupt AssemblyLines record") }
+
+		assemLine_Holder.AssemblyLines = append(assemLine_Holder.AssemblyLines, assem) //appending the updated AssemblyLine
+		
+		bytesAssemblyLines, err = json.Marshal(assemLine_Holder)
+		if err != nil { return nil, errors.New("Error creating AssemblyLine_Holder record") }
+
+		err = stub.PutState(assemLine_HolderKey, bytesAssemblyLines)
+		if err != nil { return nil, errors.New("Unable to put the state") }
+		/* AssemblyLine history ------------------------------------------Ends */
+
 		return nil, nil
 			
 }
