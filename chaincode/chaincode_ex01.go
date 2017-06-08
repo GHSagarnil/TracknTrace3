@@ -71,6 +71,11 @@ type AssemblyID_Holder struct {
 	AssemblyIDs 	[]string `json:"assemblyIDs"`
 }
 
+//AssemblyLine Holder
+type AssemblyLine_Holder struct {
+	AssemblyLines 	[]AssemblyLine `json:"assemblyLines"`
+}
+
 // Package Line Structure
 type PackageLine struct{	
 	CaseId string `json:"caseId"`
@@ -117,13 +122,6 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 	}
 	/* Access check -------------------------------------------- Ends*/
 
-		//var columns []shim.Column
-		//_assemblyId:= rand.New(rand.NewSource(99)).Int31
-
-		//Generate the AssemblyId
-		//rand.Seed(time.Now().Unix())
-		
-		//_assemblyId := strconv.Itoa(rand.Int())
 		_assemblyId := args[0]
 		_deviceSerialNo:= args[1]
 		_deviceType:=args[2]
@@ -149,6 +147,18 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		assemblyAsBytes, err := stub.GetState(_assemblyId)
 		if err != nil { return nil, errors.New("Failed to get assembly Id") }
 		if assemblyAsBytes != nil { return nil, errors.New("Assembly already exists") }
+
+
+
+		/* AssemblyLine history -----------------Starts */
+		var assemLine_HolderInit AssemblyLine_Holder
+
+		assemLine_HolderKey := _assemblyId + "H" // Indicates history key
+		bytesAssemblyLinesInit, err := json.Marshal(assemLine_HolderInit)
+		if err != nil { return nil, errors.New("Error creating assemID_Holder record") }
+		err = stub.PutState(assemLine_HolderKey, bytesAssemblyLinesInit)
+		/* AssemblyLine history -----------------Ends */
+
 
 		//setting the AssemblyLine to create
 		assem := AssemblyLine{}
@@ -176,7 +186,7 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		err = stub.PutState(_assemblyId, bytes)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
 
-	/* GetAll changes-------------------------starts--------------------------*/
+		/* GetAll changes-------------------------starts--------------------------*/
 		// Holding the AssemblyIDs in State separately
 		bytesAssemHolder, err := stub.GetState("Assemblies")
 		if err != nil { return nil, errors.New("Unable to get Assemblies") }
@@ -193,7 +203,25 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 
 		err = stub.PutState("Assemblies", bytesAssemHolder)
 		if err != nil { return nil, errors.New("Unable to put the state") }
-	/* GetAll changes---------------------------ends------------------------ */
+		/* GetAll changes---------------------------ends------------------------ */
+
+		/* AssemblyLine history ------------------------------------------Starts */
+		bytesAssemblyLines, err := stub.GetState(assemLine_HolderKey)
+		if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+		var assemLine_Holder AssemblyLine_Holder
+
+		err = json.Unmarshal(bytesAssemblyLines, &assemLine_Holder)
+		if err != nil {	return nil, errors.New("Corrupt AssemblyLines record") }
+
+		assemLine_Holder.AssemblyLines = append(assemLine_Holder.AssemblyLines, assem) //appending the newly created AssemblyLine
+		
+		bytesAssemblyLines, err = json.Marshal(assemLine_Holder)
+		if err != nil { return nil, errors.New("Error creating AssemblyLine_Holder record") }
+
+		err = stub.PutState(assemLine_HolderKey, bytesAssemblyLines)
+		if err != nil { return nil, errors.New("Unable to put the state") }
+		/* AssemblyLine history ------------------------------------------Ends */
 		
 		fmt.Println("Created Assembly successfully")
 		
@@ -951,6 +979,24 @@ func (t *TnT) getAllPackageCaseIDs(stub shim.ChaincodeStubInterface, args []stri
 
 }
 
+// All AssemblyLine history
+func (t *TnT) getAssemblyLineHistoryByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2 arguments to query")
+	}
+
+	_assemblyId := args[0]
+	//_userName:= args[1]	
+
+	assemLine_HolderKey := _assemblyId + "H" // Indicates history key
+
+	bytesAssemLineHolder, err := stub.GetState(assemLine_HolderKey)
+		if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+	return bytesAssemLineHolder, nil	
+
+}
 
 //Security & Access
 
@@ -1091,6 +1137,9 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "validateUpdatePackage" {
 		t := TnT{}
 		return t.validateUpdatePackage(stub, args)
+	} else if function == "getAssemblyLineHistoryByID" {
+		t := TnT{}
+		return t.getAssemblyLineHistoryByID(stub, args)
 	} 
 
 
