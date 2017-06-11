@@ -537,8 +537,8 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 
 		_packageCreationDate := _time.Format("20060102150405")
 		_packageLastUpdatedOn := _time.Format("20060102150405")
-		_packageCreatedBy := ""
-		_packageLastUpdatedBy := ""
+		_packageCreatedBy := user_name
+		_packageLastUpdatedBy := user_name
 
 	//Checking if the Package already exists
 		packageAsBytes, err := stub.GetState(_caseId)
@@ -603,7 +603,8 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			//_assemblyStatus:= "PACKAGED"
 			_time:= time.Now().Local()
 			_assemblyLastUpdatedOn := _time.Format("20060102150405")
-			_assemblyLastUpdatedBy := ""
+			_assemblyLastUpdatedBy := _packageCreatedBy
+			_assemblyPackage:= _caseId // Keeping reference
 
 			//get the Assembly
 			assemblyHolderAsBytes, err := stub.GetState(_holderAssemblyId)
@@ -617,6 +618,7 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			assemHolder.AssemblyStatus = _assemblyStatus
 			assemHolder.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 			assemHolder.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+			assemHolder.AssemblyPackage = _assemblyPackage
 
 			
 			bytesHolder, err := json.Marshal(assemHolder)
@@ -653,7 +655,8 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			//_assemblyStatus:= "PACKAGED"
 			_time:= time.Now().Local()
 			_assemblyLastUpdatedOn := _time.Format("20060102150405")
-			_assemblyLastUpdatedBy := ""
+			_assemblyLastUpdatedBy := _packageCreatedBy
+			_assemblyPackage:= _caseId // Keeping reference
 
 			//get the Assembly
 			assemblyChargerAsBytes, err := stub.GetState(_chargerAssemblyId)
@@ -667,6 +670,7 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			assemCharger.AssemblyStatus = _assemblyStatus
 			assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 			assemCharger.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+			assemCharger.AssemblyPackage = _assemblyPackage
 
 
 			
@@ -761,7 +765,7 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 		//_packageCreationDate := _time.Format("2006-01-02")
 		_packageLastUpdatedOn := _time.Format("20060102150405")
 		//_packageCreatedBy := ""
-		_packageLastUpdatedBy := ""
+		_packageLastUpdatedBy := user_name
 
 
 	//Checking if the Package already exists
@@ -823,7 +827,8 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			//_assemblyStatus:= "PACKAGED"
 			_time:= time.Now().Local()
 			_assemblyLastUpdatedOn := _time.Format("20060102150405")
-			_assemblyLastUpdatedBy := ""
+			_assemblyLastUpdatedBy := _packageLastUpdatedBy
+			_assemblyPackage:= _caseId // Keeping reference
 
 			//get the Assembly
 			assemblyHolderAsBytes, err := stub.GetState(_holderAssemblyId)
@@ -837,6 +842,7 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			assemHolder.AssemblyStatus = _assemblyStatus
 			assemHolder.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 			assemHolder.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+			assemHolder.AssemblyPackage = _assemblyPackage
 
 			
 			bytesHolder, err := json.Marshal(assemHolder)
@@ -872,7 +878,8 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			//_assemblyStatus:= "PACKAGED"
 			_time:= time.Now().Local()
 			_assemblyLastUpdatedOn := _time.Format("20060102150405")
-			_assemblyLastUpdatedBy := ""
+			_assemblyLastUpdatedBy := _packageLastUpdatedBy
+			_assemblyPackage:= _caseId // Keeping reference
 
 			//get the Assembly
 			assemblyChargerAsBytes, err := stub.GetState(_chargerAssemblyId)
@@ -886,7 +893,8 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			assemCharger.AssemblyStatus = _assemblyStatus
 			assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 			assemCharger.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
-			
+			assemCharger.AssemblyPackage = _assemblyPackage
+
 			bytesCharger, err := json.Marshal(assemCharger)
 			if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
 
