@@ -63,6 +63,10 @@ type AssemblyLine struct{
 	AssemblyLastUpdatedOn string `json:"assemblyLastUpdateOn"`
 	AssemblyCreatedBy string `json:"assemblyCreatedBy"`
 	AssemblyLastUpdatedBy string `json:"assemblyLastUpdatedBy"`
+	AssemblyPackage string `json:"assemblyPackage"`
+	AssemblyInfo1 string `json:"assemblyInfo1"`
+	AssemblyInfo2 string `json:"assemblyInfo2"`
+	//_assemblyPackage,_assemblyInfo1,_assemblyInfo2
 	}
 
 
@@ -99,15 +103,23 @@ type PackageCaseID_Holder struct {
 	PackageCaseIDs 	[]string `json:"packageCaseIDs"`
 }
 
+//PackageLine Holder
+type PackageLine_Holder struct {
+	PackageLines 	[]PackageLine `json:"packageLines"`
+}
+
+
 //API to create an assembly
+//"args": [ "ASM0101","DEV0101","HOLDER","FIL0002","LED0002","CIR0002","WIR0002","CAS0002","ADA0002","STK0002","MAN0002","1","20170608","aluser1"]
+//_assemblyId,_deviceSerialNo,_deviceType,_filamentBatchId,_ledBatchId,_circuitBoardBatchId,_wireBatchId,_casingBatchId,_adaptorBatchId,_stickPodBatchId,_manufacturingPlant,_assemblyStatus _assemblyDate,_assemblyPackage,_assemblyInfo1,_assemblyInfo2 ,user_name
 func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 14 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 14. Got: %d.", len(args))
+	if len(args) != 17 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 17. Got: %d.", len(args))
 		}
 
 	/* Access check -------------------------------------------- Starts*/
-	user_name := args[13]
+	user_name := args[16]
 	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
 
 	if len(user_name) > 0 {
@@ -135,11 +147,13 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		_manufacturingPlant:=args[10]
 		_assemblyStatus:= args[11]
 		_assemblyDate:= args[12]
-
+		_assemblyPackage:= args[13]
+		_assemblyInfo1:= args[14]
+		_assemblyInfo2:= args[15]
 		_time:= time.Now().Local()
 
-		_assemblyCreationDate := _time.Format("2006-01-02")
-		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
+		_assemblyCreationDate := _time.Format("20060102150405")
+		_assemblyLastUpdatedOn := _time.Format("20060102150405")
 		_assemblyCreatedBy := user_name
 		_assemblyLastUpdatedBy := user_name
 
@@ -179,6 +193,11 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 		assem.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 		assem.AssemblyCreatedBy = _assemblyCreatedBy
 		assem.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+		assem.AssemblyPackage = _assemblyPackage
+		assem.AssemblyInfo1 = _assemblyInfo1
+		assem.AssemblyInfo2 = _assemblyInfo2
+		
+		
 
 		bytes, err := json.Marshal(assem)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
@@ -230,12 +249,24 @@ func (t *TnT) createAssembly(stub shim.ChaincodeStubInterface, args []string) ([
 }
 
 //Update Assembly based on Id - All except AssemblyId, DeviceSerialNo,DeviceType and AssemblyCreationDate and AssemblyCreatedBy
+//"args": [ "ASM0101","DEV0101","HOLDER","FIL0002","LED0002","CIR0002","WIR0002","CAS0002","ADA0002","STK0002","MAN0002","1","20170608","CASE0001","INFO1","INFO2"aluser1"]
+//_assemblyId,_deviceSerialNo,_deviceType,_filamentBatchId,_ledBatchId,_circuitBoardBatchId,_wireBatchId,_casingBatchId,_adaptorBatchId,_stickPodBatchId,_manufacturingPlant,_assemblyStatus _assemblyDate,_assemblyPackage,_assemblyInfo1,_assemblyInfo2 ,user_name
 func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 14 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 14.")
+	if len(args) != 17 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 17.")
 	} 
 	
+	/* Access check -------------------------------------------- Starts*/
+	user_name := args[16]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}	
+	}
+	/* Access check -------------------------------------------- Ends*/
 
 		_assemblyId := args[0]
 		_deviceSerialNo:= args[1]
@@ -250,12 +281,15 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		_manufacturingPlant:=args[10]
 		_assemblyStatus:= args[11]
 		_assemblyDate:= args[12] 
+		_assemblyPackage:= args[13]
+		_assemblyInfo1:= args[14]
+		_assemblyInfo2:= args[15]
 		
 		_time:= time.Now().Local()
 		//_assemblyCreationDate - No change
-		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
+		_assemblyLastUpdatedOn := _time.Format("20060102150405")
 		//_assemblyCreatedBy - No change
-		_assemblyLastUpdatedBy := args[13]
+		_assemblyLastUpdatedBy := user_name
 
 		//get the Assembly
 		assemblyAsBytes, err := stub.GetState(_assemblyId)
@@ -264,34 +298,6 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 
 		assem := AssemblyLine{}
 		json.Unmarshal(assemblyAsBytes, &assem)
-
-
-	/* Access check -------------------------------------------- Starts*/
-	user_name := args[13]
-	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
-
-	if len(user_name) > 0 {
-		ecert_role, err := t.get_ecert(stub, user_name)
-		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
-		if ecert_role == nil {return nil, errors.New("username not defined")}	
-	/*
-		user_role := string(ecert_role)
-		if user_role == ASSEMBLYLINE_ROLE 					&&
-		(assem.AssemblyStatus == ASSEMBLYSTATUS_RFP 		||
-		assem.AssemblyStatus == ASSEMBLYSTATUS_PKG 			||
-		assem.AssemblyStatus == ASSEMBLYSTATUS_SFS) 		{
-			return nil, errors.New("Permission denied for AssemblyLine Role to update Assembly if status = Ready For Packaging or Packaged or Sent For Shipment")
-		}
-		
-		if user_role == PACKAGELINE_ROLE 					&&
-		(assem.AssemblyStatus != ASSEMBLYSTATUS_RFP 		&&
-		assem.AssemblyStatus != ASSEMBLYSTATUS_PKG 			&&
-		assem.AssemblyStatus != ASSEMBLYSTATUS_SFS) 		{
-			return nil, errors.New("Permission denied for PackageLine Role to update Assembly if status not = Ready For Packaging or Packaged or Sent For Shipment")
-		}
-	*/		
-	}
-	/* Access check -------------------------------------------- Ends*/
 
 
 		//update the AssemblyLine 
@@ -312,6 +318,9 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 		assem.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 		//assem.AssemblyCreatedBy = _assemblyCreatedBy
 		assem.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+		assem.AssemblyPackage = _assemblyPackage
+		assem.AssemblyInfo1 = _assemblyInfo1
+		assem.AssemblyInfo2 = _assemblyInfo2
 
 
 		
@@ -323,6 +332,7 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 
 
 		/* AssemblyLine history ------------------------------------------Starts */
+		// assemLine_HolderKey := _assemblyId + "H" // Indicates history key
 		assemLine_HolderKey := _assemblyId + "H" // Indicates History Key for Assembly with ID = _assemblyId
 		bytesAssemblyLines, err := stub.GetState(assemLine_HolderKey)
 		if err != nil { return nil, errors.New("Unable to get Assemblies") }
@@ -357,7 +367,7 @@ func (t *TnT) updateAssemblyStatusByID(stub shim.ChaincodeStubInterface, args []
 		_assemblyStatus:= args[1]
 		
 		_time:= time.Now().Local()
-		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
+		_assemblyLastUpdatedOn := _time.Format("20060102150405")
 		_assemblyLastUpdatedBy := ""
 
 		//get the Assembly
@@ -379,6 +389,26 @@ func (t *TnT) updateAssemblyStatusByID(stub shim.ChaincodeStubInterface, args []
 
 		err = stub.PutState(_assemblyId, bytes)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+
+		/* AssemblyLine history ------------------------------------------Starts */
+		// assemLine_HolderKey := _assemblyId + "H" // Indicates history key
+		assemLine_HolderKey := _assemblyId + "H" // Indicates History Key for Assembly with ID = _assemblyId
+		bytesAssemblyLines, err := stub.GetState(assemLine_HolderKey)
+		if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+		var assemLine_Holder AssemblyLine_Holder
+
+		err = json.Unmarshal(bytesAssemblyLines, &assemLine_Holder)
+		if err != nil {	return nil, errors.New("Corrupt AssemblyLines record") }
+
+		assemLine_Holder.AssemblyLines = append(assemLine_Holder.AssemblyLines, assem) //appending the updated AssemblyLine
+		
+		bytesAssemblyLines, err = json.Marshal(assemLine_Holder)
+		if err != nil { return nil, errors.New("Error creating AssemblyLine_Holder record") }
+
+		err = stub.PutState(assemLine_HolderKey, bytesAssemblyLines)
+		if err != nil { return nil, errors.New("Unable to put the state") }
+		/* AssemblyLine history ------------------------------------------Ends */
 
 		return nil, nil
 			
@@ -494,8 +524,8 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 
 		_time:= time.Now().Local()
 
-		_packageCreationDate := _time.Format("2006-01-02")
-		_packageLastUpdatedOn := _time.Format("2006-01-02")
+		_packageCreationDate := _time.Format("20060102150405")
+		_packageLastUpdatedOn := _time.Format("20060102150405")
 		_packageCreatedBy := ""
 		_packageLastUpdatedBy := ""
 
@@ -523,62 +553,138 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 		err = stub.PutState(_caseId, bytes)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Package record: %s", err); return nil, errors.New("Error storing Package record") }
 
+
+		/* PackageLine history -----------------Starts */
+		// Initialises the PackageLine_Holder
+		var packLine_HolderInit PackageLine_Holder
+
+		packLine_HolderKey := _caseId + "H" // Indicates history key
+		bytesPackLinesInit, err := json.Marshal(packLine_HolderInit)
+		if err != nil { return nil, errors.New("Error creating packLine_HolderInit record") }
+		err = stub.PutState(packLine_HolderKey, bytesPackLinesInit)
+		/* PackageLine history -----------------Ends */
+
+		/* PackageLine history ------------------------------------------Starts */
+		//packLine_HolderKey := _caseId + "H" // Indicates history key
+
+		bytesPackageLines, err := stub.GetState(packLine_HolderKey)
+		if err != nil { return nil, errors.New("Unable to get bytesPackageLines") }
+
+		var packLine_Holder PackageLine_Holder
+
+		err = json.Unmarshal(bytesPackageLines, &packLine_Holder)
+		if err != nil {	return nil, errors.New("Corrupt bytesPackageLines record") }
+
+		packLine_Holder.PackageLines = append(packLine_Holder.PackageLines, pack) //appending the newly created pack
+		
+		bytesPackageLines, err = json.Marshal(packLine_Holder)
+		if err != nil { return nil, errors.New("Error creating AssemblyLine_Holder record") }
+
+		err = stub.PutState(packLine_HolderKey, bytesPackageLines)
+		if err != nil { return nil, errors.New("Unable to put the state") }
+		/* PackageLine history ------------------------------------------Ends */
+
+
 		fmt.Println("Created Package successfully")
 
 		//Update Holder Assemblies to Packaged status
 		if 	len(_holderAssemblyId) > 0	{
-		//_assemblyStatus:= "PACKAGED"
-		_time:= time.Now().Local()
-		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
-		_assemblyLastUpdatedBy := ""
+			//_assemblyStatus:= "PACKAGED"
+			_time:= time.Now().Local()
+			_assemblyLastUpdatedOn := _time.Format("20060102150405")
+			_assemblyLastUpdatedBy := ""
 
-		//get the Assembly
-		assemblyHolderAsBytes, err := stub.GetState(_holderAssemblyId)
-		if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
-		if assemblyHolderAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
+			//get the Assembly
+			assemblyHolderAsBytes, err := stub.GetState(_holderAssemblyId)
+			if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
+			if assemblyHolderAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
 
-		assemHolder := AssemblyLine{}
-		json.Unmarshal(assemblyHolderAsBytes, &assemHolder)
+			assemHolder := AssemblyLine{}
+			json.Unmarshal(assemblyHolderAsBytes, &assemHolder)
 
-		//update the AssemblyLine status
-		assemHolder.AssemblyStatus = _assemblyStatus
-		assemHolder.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
-		assemHolder.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+			//update the AssemblyLine status
+			assemHolder.AssemblyStatus = _assemblyStatus
+			assemHolder.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
+			assemHolder.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
 
-		
-		bytesHolder, err := json.Marshal(assemHolder)
-		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
+			
+			bytesHolder, err := json.Marshal(assemHolder)
+			if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
 
-		err = stub.PutState(_holderAssemblyId, bytesHolder)
-		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
-		}
+			err = stub.PutState(_holderAssemblyId, bytesHolder)
+			if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+
+
+			/* AssemblyLine history ------------------------------------------Starts */
+			holderAssemLine_HolderKey := _holderAssemblyId + "H" // Indicates History Key for Assembly with ID = _assemblyId
+			bytesHolderAssemblyLines, err := stub.GetState(holderAssemLine_HolderKey)
+			if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+			var holderAssemLine_Holder AssemblyLine_Holder
+
+			err = json.Unmarshal(bytesHolderAssemblyLines, &holderAssemLine_Holder)
+			if err != nil {	return nil, errors.New("Corrupt AssemblyLines record") }
+
+			holderAssemLine_Holder.AssemblyLines = append(holderAssemLine_Holder.AssemblyLines, assemHolder) //appending the updated AssemblyLine
+			
+			bytesHolderAssemblyLines, err = json.Marshal(holderAssemLine_Holder)
+			if err != nil { return nil, errors.New("Error creating AssemblyLine_Holder record") }
+
+			err = stub.PutState(holderAssemLine_HolderKey, bytesHolderAssemblyLines)
+			if err != nil { return nil, errors.New("Unable to put the state") }
+			/* AssemblyLine history ------------------------------------------Ends */
+
+
+			}
 
 		//Update Charger Assemblies to Packaged status
 		if 	len(_chargerAssemblyId) > 0		{
-		//_assemblyStatus:= "PACKAGED"
-		_time:= time.Now().Local()
-		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
-		_assemblyLastUpdatedBy := ""
+			//_assemblyStatus:= "PACKAGED"
+			_time:= time.Now().Local()
+			_assemblyLastUpdatedOn := _time.Format("20060102150405")
+			_assemblyLastUpdatedBy := ""
 
-		//get the Assembly
-		assemblyChargerAsBytes, err := stub.GetState(_chargerAssemblyId)
-		if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
-		if assemblyChargerAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
+			//get the Assembly
+			assemblyChargerAsBytes, err := stub.GetState(_chargerAssemblyId)
+			if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
+			if assemblyChargerAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
 
-		assemCharger := AssemblyLine{}
-		json.Unmarshal(assemblyChargerAsBytes, &assemCharger)
+			assemCharger := AssemblyLine{}
+			json.Unmarshal(assemblyChargerAsBytes, &assemCharger)
 
-		//update the AssemblyLine status
-		assemCharger.AssemblyStatus = _assemblyStatus
-		assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
-		assemCharger.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+			//update the AssemblyLine status
+			assemCharger.AssemblyStatus = _assemblyStatus
+			assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
+			assemCharger.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
 
-		
-		bytesCharger, err := json.Marshal(assemCharger)
-		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
 
-		err = stub.PutState(_chargerAssemblyId, bytesCharger)
-		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+			
+			bytesCharger, err := json.Marshal(assemCharger)
+			if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
+
+			err = stub.PutState(_chargerAssemblyId, bytesCharger)
+			if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+
+
+			/* AssemblyLine history ------------------------------------------Starts */
+			chargerAssemLine_HolderKey := _chargerAssemblyId + "H" // Indicates History Key for Assembly with ID = _assemblyId
+			bytesChargerAssemblyLines, err := stub.GetState(chargerAssemLine_HolderKey)
+			if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+			var chargerAssemLine_Holder AssemblyLine_Holder
+
+			err = json.Unmarshal(bytesChargerAssemblyLines, &chargerAssemLine_Holder)
+			if err != nil {	return nil, errors.New("Corrupt AssemblyLines record") }
+
+			chargerAssemLine_Holder.AssemblyLines = append(chargerAssemLine_Holder.AssemblyLines, assemCharger) //appending the updated AssemblyLine
+			
+			bytesChargerAssemblyLines, err = json.Marshal(chargerAssemLine_Holder)
+			if err != nil { return nil, errors.New("Error creating AssemblyLine_Holder record") }
+
+			err = stub.PutState(chargerAssemLine_HolderKey, bytesChargerAssemblyLines)
+			if err != nil { return nil, errors.New("Unable to put the state") }
+			/* AssemblyLine history ------------------------------------------Ends */
+
 		}
 
 	/* GetAll changes-------------------------starts--------------------------*/
@@ -642,7 +748,7 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 		_time:= time.Now().Local()
 
 		//_packageCreationDate := _time.Format("2006-01-02")
-		_packageLastUpdatedOn := _time.Format("2006-01-02")
+		_packageLastUpdatedOn := _time.Format("20060102150405")
 		//_packageCreatedBy := ""
 		_packageLastUpdatedBy := ""
 
@@ -678,61 +784,124 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 		err = stub.PutState(_caseId, bytes)
 		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Package record: %s", err); return nil, errors.New("Error storing Package record") }
 
+
+		/* PackageLine history ------------------------------------------Starts */
+		packLine_HolderKey := _caseId + "H" // Indicates history key
+
+		bytesPackageLines, err := stub.GetState(packLine_HolderKey)
+		if err != nil { return nil, errors.New("Unable to get bytesPackageLines") }
+
+		var packLine_Holder PackageLine_Holder
+
+		err = json.Unmarshal(bytesPackageLines, &packLine_Holder)
+		if err != nil {	return nil, errors.New("Corrupt bytesPackageLines record") }
+
+		packLine_Holder.PackageLines = append(packLine_Holder.PackageLines, pack) //appending the newly created pack
+		
+		bytesPackageLines, err = json.Marshal(packLine_Holder)
+		if err != nil { return nil, errors.New("Error creating AssemblyLine_Holder record") }
+
+		err = stub.PutState(packLine_HolderKey, bytesPackageLines)
+		if err != nil { return nil, errors.New("Unable to put the state") }
+		/* PackageLine history ------------------------------------------Ends */
+
 		fmt.Println("Created Package successfully")
 
 		//Update Holder Assemblies status
 		if 	len(_holderAssemblyId) > 0	{
-		//_assemblyStatus:= "PACKAGED"
-		_time:= time.Now().Local()
-		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
-		_assemblyLastUpdatedBy := ""
+			//_assemblyStatus:= "PACKAGED"
+			_time:= time.Now().Local()
+			_assemblyLastUpdatedOn := _time.Format("20060102150405")
+			_assemblyLastUpdatedBy := ""
 
-		//get the Assembly
-		assemblyHolderAsBytes, err := stub.GetState(_holderAssemblyId)
-		if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
-		if assemblyHolderAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
+			//get the Assembly
+			assemblyHolderAsBytes, err := stub.GetState(_holderAssemblyId)
+			if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
+			if assemblyHolderAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
 
-		assemHolder := AssemblyLine{}
-		json.Unmarshal(assemblyHolderAsBytes, &assemHolder)
+			assemHolder := AssemblyLine{}
+			json.Unmarshal(assemblyHolderAsBytes, &assemHolder)
 
-		//update the AssemblyLine status
-		assemHolder.AssemblyStatus = _assemblyStatus
-		assemHolder.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
-		assemHolder.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+			//update the AssemblyLine status
+			assemHolder.AssemblyStatus = _assemblyStatus
+			assemHolder.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
+			assemHolder.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
 
-		
-		bytesHolder, err := json.Marshal(assemHolder)
-		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
+			
+			bytesHolder, err := json.Marshal(assemHolder)
+			if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
 
-		err = stub.PutState(_holderAssemblyId, bytesHolder)
-		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+			err = stub.PutState(_holderAssemblyId, bytesHolder)
+			if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+
+
+			/* AssemblyLine history ------------------------------------------Starts */
+			holderAssemLine_HolderKey := _holderAssemblyId + "H" // Indicates History Key for Assembly with ID = _assemblyId
+			bytesHolderAssemblyLines, err := stub.GetState(holderAssemLine_HolderKey)
+			if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+			var holderAssemLine_Holder AssemblyLine_Holder
+
+			err = json.Unmarshal(bytesHolderAssemblyLines, &holderAssemLine_Holder)
+			if err != nil {	return nil, errors.New("Corrupt AssemblyLines record") }
+
+			holderAssemLine_Holder.AssemblyLines = append(holderAssemLine_Holder.AssemblyLines, assemHolder) //appending the updated AssemblyLine
+			
+			bytesHolderAssemblyLines, err = json.Marshal(holderAssemLine_Holder)
+			if err != nil { return nil, errors.New("Error creating AssemblyLine_Holder record") }
+
+			err = stub.PutState(holderAssemLine_HolderKey, bytesHolderAssemblyLines)
+			if err != nil { return nil, errors.New("Unable to put the state") }
+			/* AssemblyLine history ------------------------------------------Ends */
+
 		}
 
 		//Update Charger Assemblies status
 		if 	len(_chargerAssemblyId) > 0		{
-		//_assemblyStatus:= "PACKAGED"
-		_time:= time.Now().Local()
-		_assemblyLastUpdatedOn := _time.Format("2006-01-02")
-		_assemblyLastUpdatedBy := ""
+			//_assemblyStatus:= "PACKAGED"
+			_time:= time.Now().Local()
+			_assemblyLastUpdatedOn := _time.Format("20060102150405")
+			_assemblyLastUpdatedBy := ""
 
-		//get the Assembly
-		assemblyChargerAsBytes, err := stub.GetState(_chargerAssemblyId)
-		if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
-		if assemblyChargerAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
+			//get the Assembly
+			assemblyChargerAsBytes, err := stub.GetState(_chargerAssemblyId)
+			if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
+			if assemblyChargerAsBytes == nil { return nil, errors.New("Assembly doesn't exists") }
 
-		assemCharger := AssemblyLine{}
-		json.Unmarshal(assemblyChargerAsBytes, &assemCharger)
+			assemCharger := AssemblyLine{}
+			json.Unmarshal(assemblyChargerAsBytes, &assemCharger)
 
-		//update the AssemblyLine status
-		assemCharger.AssemblyStatus = _assemblyStatus
-		assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
-		assemCharger.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
-		
-		bytesCharger, err := json.Marshal(assemCharger)
-		if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
+			//update the AssemblyLine status
+			assemCharger.AssemblyStatus = _assemblyStatus
+			assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
+			assemCharger.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
+			
+			bytesCharger, err := json.Marshal(assemCharger)
+			if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
 
-		err = stub.PutState(_chargerAssemblyId, bytesCharger)
-		if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+			err = stub.PutState(_chargerAssemblyId, bytesCharger)
+			if err != nil { fmt.Printf("SAVE_CHANGES: Error storing Assembly record: %s", err); return nil, errors.New("Error storing Assembly record") }
+
+
+			/* AssemblyLine history ------------------------------------------Starts */
+			chargerAssemLine_HolderKey := _chargerAssemblyId + "H" // Indicates History Key for Assembly with ID = _assemblyId
+			bytesChargerAssemblyLines, err := stub.GetState(chargerAssemLine_HolderKey)
+			if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+			var chargerAssemLine_Holder AssemblyLine_Holder
+
+			err = json.Unmarshal(bytesChargerAssemblyLines, &chargerAssemLine_Holder)
+			if err != nil {	return nil, errors.New("Corrupt AssemblyLines record") }
+
+			chargerAssemLine_Holder.AssemblyLines = append(chargerAssemLine_Holder.AssemblyLines, assemCharger) //appending the updated AssemblyLine
+			
+			bytesChargerAssemblyLines, err = json.Marshal(chargerAssemLine_Holder)
+			if err != nil { return nil, errors.New("Error creating AssemblyLine_Holder record") }
+
+			err = stub.PutState(chargerAssemLine_HolderKey, bytesChargerAssemblyLines)
+			if err != nil { return nil, errors.New("Unable to put the state") }
+			/* AssemblyLine history ------------------------------------------Ends */
+
 		}
 
 		return nil, nil
@@ -1018,6 +1187,23 @@ func (t *TnT) getAssemblyLineHistoryByID(stub shim.ChaincodeStubInterface, args 
 
 }
 
+// All AssemblyLine history
+func (t *TnT) getPackageLineHistoryByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2 arguments to query")
+	}
+
+	_caseId := args[0]
+	//_userName:= args[1]	
+
+	packLine_HolderKey := _caseId + "H" // Indicates history key
+	bytesPackLineHolder, err := stub.GetState(packLine_HolderKey)
+		if err != nil { return nil, errors.New("Unable to get PackageLine history") }
+
+	return bytesPackLineHolder, nil	
+
+}
 //Security & Access
 
 //==============================================================================================================================
@@ -1060,26 +1246,11 @@ func (t *TnT) Init(stub shim.ChaincodeStubInterface, function string, args []str
 	/* GetAll changes-------------------------starts--------------------------*/
 
 	var assemID_Holder AssemblyID_Holder
-	/*
-	// Adding a dummy assembly to test
-	if len(args) != 0 {
-			_assemblyId := args[0]
-			assemID_Holder.AssemblyIDs = append(assemID_Holder.AssemblyIDs, _assemblyId)
-		}
-	*/	
-
 	bytesAssembly, err := json.Marshal(assemID_Holder)
     if err != nil { return nil, errors.New("Error creating assemID_Holder record") }
 	err = stub.PutState("Assemblies", bytesAssembly)
 
 	var packageCaseID_Holder PackageCaseID_Holder
-	/*
-	// Adding a dummy package to test
-	if len(args) != 0 {
-			_packageId := args[0]
-			packageCaseID_Holder.PackageCaseIDs = append(packageCaseID_Holder.PackageCaseIDs, _packageId)
-		}
-	*/
 	bytesPackage, err := json.Marshal(packageCaseID_Holder)
     if err != nil { return nil, errors.New("Error creating packageCaseID_Holder record") }
 	err = stub.PutState("Packages", bytesPackage)
@@ -1160,8 +1331,11 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getAssemblyLineHistoryByID" {
 		t := TnT{}
 		return t.getAssemblyLineHistoryByID(stub, args)
+	} else if function == "getPackageLineHistoryByID" {
+		t := TnT{}
+		return t.getPackageLineHistoryByID(stub, args)
 	} 
-
+//getPackageLineHistoryByID
 
 	return nil, errors.New("Received unknown function query")
 }
