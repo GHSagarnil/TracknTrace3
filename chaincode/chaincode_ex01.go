@@ -359,10 +359,21 @@ func (t *TnT) updateAssemblyByID(stub shim.ChaincodeStubInterface, args []string
 //Update Assembly based on Id - AssemblyStatus
 func (t *TnT) updateAssemblyStatusByID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 2 {
+	if len(args) != 3 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2.")
 	} 
 	
+	/* Access check -------------------------------------------- Starts*/
+	user_name := args[2]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}	
+	}
+	/* Access check -------------------------------------------- Ends*/
+
 		_assemblyId := args[0]
 		_assemblyStatus:= args[1]
 		
@@ -988,12 +999,12 @@ func (t *TnT) getAllPackages(stub shim.ChaincodeStubInterface, args []string) ([
 // Validator before createAssembly invoke call
 func (t *TnT) validateCreateAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 14 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 14. Got: %d.", len(args))
+	if len(args) != 17 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 17. Got: %d.", len(args))
 		}
 
 	/* Access check -------------------------------------------- Starts*/
-	user_name := args[13]
+	user_name := args[16]
 	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
 
 	if len(user_name) > 0 {
@@ -1022,8 +1033,8 @@ func (t *TnT) validateCreateAssembly(stub shim.ChaincodeStubInterface, args []st
 // Validator before createAssembly invoke call
 func (t *TnT) validateUpdateAssembly(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 14 {
-			return nil, errors.New("Incorrect number of arguments. Expecting 14.")
+	if len(args) != 17 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 17.")
 		} 
 	
 
@@ -1105,7 +1116,7 @@ func (t *TnT) validateCreatePackage(stub shim.ChaincodeStubInterface, args []str
 	return nil, nil
 }
 
-// Validator before createAssembly invoke call
+// Validator before updateAssembly invoke call
 func (t *TnT) validateUpdatePackage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
 	if len(args) != 8 {
