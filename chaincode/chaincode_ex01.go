@@ -43,6 +43,15 @@ const   ASSEMBLYSTATUS_RFP   	=	"6" //Ready For Packaging"
 const  	ASSEMBLYSTATUS_PKG 		=	"7" //Packaged" 
 const  	ASSEMBLYSTATUS_CAN 		=	"8" //Cancelled"
 const  	ASSEMBLYSTATUS_QAF 		=	"2" //QA Failed"
+const   FIL_BATCH  				=	"FilamentBatch"
+const   LED_BATCH  				=	"LedBatch"
+const   CIR_BATCH  				=	"CircuitBoardBatch"
+const   WRE_BATCH  				=	"WireBatch"
+const   CAS_BATCH  				=	"CasingBatch"
+const   ADP_BATCH  				=	"AdaptorBatch"
+const   STK_BATCH  				=	"StickPodBatch"
+
+
 
 // Assembly Line Structure
 type AssemblyLine struct{	
@@ -491,6 +500,91 @@ func (t *TnT) getAllAssemblies(stub shim.ChaincodeStubInterface, args []string) 
 		res2E=append(res2E,res)
 		} // If ends
 		} // For ends
+
+    mapB, _ := json.Marshal(res2E)
+    //fmt.Println(string(mapB))
+	return mapB, nil
+}
+
+//get all Assemblies based on Type & BatchNo
+func (t *TnT) getAssembliesByBatchNumber(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
+	/* Access check -------------------------------------------- Starts*/
+	if len(args) != 3 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 3.")
+		}
+	user_name := args[2]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != ASSEMBLYLINE_ROLE {
+			return nil, errors.New("Permission denied not AssemblyLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+
+	_batchType:= args[0]
+	_batchNumber:= args[1]
+	_assemblyFlag:= 0
+
+	bytes, err := stub.GetState("Assemblies")
+	if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+	var assemID_Holder AssemblyID_Holder
+
+	err = json.Unmarshal(bytes, &assemID_Holder)
+	if err != nil {	return nil, errors.New("Corrupt Assemblies") }
+
+	res2E:= []*AssemblyLine{}	
+
+	for _, assemblyId := range assemID_Holder.AssemblyIDs {
+
+		//Get the existing AssemblyLine
+		assemblyAsBytes, err := stub.GetState(assemblyId)
+		if err != nil { return nil, errors.New("Failed to get Assembly")}
+
+		if assemblyAsBytes != nil { 
+			res := new(AssemblyLine)
+			json.Unmarshal(assemblyAsBytes, &res)
+
+			//Check the filter condition
+			if 		   _batchType == FIL_BATCH					&&
+						res.FilamentBatchId == _batchNumber		{ 
+						_assemblyFlag = 1
+			} else if  _batchType == LED_BATCH					&&
+						res.LedBatchId == _batchNumber			{ 
+						_assemblyFlag = 1
+			} else if  _batchType == CIR_BATCH					&&
+						res.CircuitBoardBatchId == _batchNumber	{ 
+						_assemblyFlag = 1
+			} else if  _batchType == WRE_BATCH					&&
+						res.WireBatchId == _batchNumber			{ 
+						_assemblyFlag = 1
+			} else if  _batchType == CAS_BATCH					&&
+						res.CasingBatchId == _batchNumber		{ 
+						_assemblyFlag = 1
+			} else if  _batchType == ADP_BATCH					&&
+						res.AdaptorBatchId == _batchNumber		{ 
+						_assemblyFlag = 1
+			} else if  _batchType == STK_BATCH					&&
+						res.StickPodBatchId == _batchNumber		{ 
+						_assemblyFlag = 1
+			}
+			
+
+			// Append Assembly to Assembly Array if the flag is 1 (indicates valid for filter criteria)
+			if _assemblyFlag == 1{
+				res2E=append(res2E,res)
+			}
+		} // If ends
+		//re-setting the flag to 0
+		_assemblyFlag = 0
+	} // For ends
 
     mapB, _ := json.Marshal(res2E)
     //fmt.Println(string(mapB))
@@ -1353,9 +1447,11 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getPackageLineHistoryByID" {
 		t := TnT{}
 		return t.getPackageLineHistoryByID(stub, args)
+	} else if function == "getAssembliesByBatchNumber" {
+		t := TnT{}
+		return t.getAssembliesByBatchNumber(stub, args)
 	} 
-//getPackageLineHistoryByID
-
+	
 	return nil, errors.New("Received unknown function query")
 }
 
