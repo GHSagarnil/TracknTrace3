@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
-	//"strconv"
+	"strconv"
 	
 	"encoding/json"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -578,7 +578,7 @@ func (t *TnT) getAssembliesByBatchNumber(stub shim.ChaincodeStubInterface, args 
 			
 
 			// Append Assembly to Assembly Array if the flag is 1 (indicates valid for filter criteria)
-			if _assemblyFlag == 1{
+			if _assemblyFlag == 1 {
 				res2E=append(res2E,res)
 			}
 		} // If ends
@@ -591,6 +591,86 @@ func (t *TnT) getAssembliesByBatchNumber(stub shim.ChaincodeStubInterface, args 
 	return mapB, nil
 }
 
+//get all Assemblies based on FromDate & ToDate
+func (t *TnT) getAssembliesByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
+	/* Access check -------------------------------------------- Starts*/
+	if len(args) != 3 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 3.")
+		}
+	user_name := args[2]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != ASSEMBLYLINE_ROLE {
+			return nil, errors.New("Permission denied not AssemblyLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+
+	// YYYYMMDDHHMMSS (e.g. 20170612235959) handled as Int64
+	//var _fromDate int64
+	//var _toDate int64
+	
+	_fromDate, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting FromDate to int64")}
+	
+	_toDate, err := strconv.ParseInt(args[1], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting ToDate to int64")}
+	
+	_assemblyFlag:= 0
+
+	bytes, err := stub.GetState("Assemblies")
+	if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+	var assemID_Holder AssemblyID_Holder
+	var _assemblyDateInt64 int64
+	
+	err = json.Unmarshal(bytes, &assemID_Holder)
+	if err != nil {	return nil, errors.New("Corrupt Assemblies") }
+
+	res2E:= []*AssemblyLine{}	
+
+	for _, assemblyId := range assemID_Holder.AssemblyIDs {
+
+		//Get the existing AssemblyLine History
+		assemblyAsBytes, err := stub.GetState(assemblyId)
+		if err != nil { return nil, errors.New("Failed to get Assembly")}
+		if assemblyAsBytes == nil { return nil, errors.New("Failed to get Assembly")}
+
+		res := new(AssemblyLine)
+		json.Unmarshal(assemblyAsBytes, &res)
+
+		//fmt.Printf("%T, %v\n", _fromDate, _fromDate)
+		//fmt.Printf("%T, %v\n", _toDate, _toDate)
+		//if _fromDate == _toDate { return nil, errors.New("Failed to get Assembly")}
+		
+		//Check the filter condition YYYYMMDDHHMMSS
+		if len(res.AssemblyDate) != 14 {return nil, errors.New("AssemblyDate must be 14 digit datetime field.")}
+		if _assemblyDateInt64, err = strconv.ParseInt(res.AssemblyDate, 10, 64); err != nil { errors.New ("Error in converting AssemblyDate to int64")}
+		if	_assemblyDateInt64 >= _fromDate		&&
+			_assemblyDateInt64 <= _toDate		{ 
+			_assemblyFlag = 1
+		} 
+					
+		// Append Assembly to Assembly Array if the flag is 1 (indicates valid for filter criteria)
+		if _assemblyFlag == 1 {
+			res2E=append(res2E,res)
+		}
+	//re-setting the flag and AssemblyDate
+		_assemblyFlag = 0
+		_assemblyDateInt64 = 0
+	} // For ends
+
+    mapB, _ := json.Marshal(res2E)
+    //fmt.Println(string(mapB))
+	return mapB, nil
+}
 
 /* Package section*/
 
@@ -1450,6 +1530,9 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getAssembliesByBatchNumber" {
 		t := TnT{}
 		return t.getAssembliesByBatchNumber(stub, args)
+	} else if function == "getAssembliesByDate" {
+		t := TnT{}
+		return t.getAssembliesByDate(stub, args)
 	} 
 	
 	return nil, errors.New("Received unknown function query")
