@@ -1320,7 +1320,7 @@ func (t *TnT) validateUpdateAssembly(stub shim.ChaincodeStubInterface, args []st
 
 
 	/* Access check -------------------------------------------- Starts*/
-	user_name := args[13]
+	user_name := args[16]
 	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
 
 	if len(user_name) > 0 {
