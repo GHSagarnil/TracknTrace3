@@ -673,7 +673,7 @@ func (t *TnT) getAssembliesByDate(stub shim.ChaincodeStubInterface, args []strin
 }
 
 //get all Assemblies History based on FromDate & ToDate
-func (t *TnT) getAssembliesWithHistoryByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *TnT) getAssembliesHistoryByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	
 	/* Access check -------------------------------------------- Starts*/
 	if len(args) != 3 {
@@ -1620,9 +1620,9 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getAssembliesByDate" {
 		t := TnT{}
 		return t.getAssembliesByDate(stub, args)
-	} else if function == "getAssembliesWithHistoryByDate" {
+	} else if function == "getAssembliesHistoryByDate" {
 		t := TnT{}
-		return t.getAssembliesWithHistoryByDate(stub, args)
+		return t.getAssembliesHistoryByDate(stub, args)
 	} 
 	
 	return nil, errors.New("Received unknown function query")
