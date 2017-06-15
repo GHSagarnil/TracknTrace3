@@ -737,17 +737,23 @@ func (t *TnT) getAssembliesHistoryByDate(stub shim.ChaincodeStubInterface, args 
 		for _, res := range assemLineHistory_Holder.AssemblyLines {
 		
 			//Check the filter condition YYYYMMDDHHMMSS
+			/*
 			if len(res.AssemblyDate) != 14 {return nil, errors.New("AssemblyDate must be 14 digit datetime field.")}
 			if _assemblyDateInt64, err = strconv.ParseInt(res.AssemblyDate, 10, 64); err != nil { errors.New ("Error in converting AssemblyDate to int64")}
-			if	_assemblyDateInt64 >= _fromDate		&&
-				_assemblyDateInt64 <= _toDate		{ 
-				_assemblyFlag = 1
-			} 
+			*/
+			if len(res.AssemblyDate) == 14 {
+			if _assemblyDateInt64, err = strconv.ParseInt(res.AssemblyDate, 10, 64); err != nil { errors.New ("Error in converting AssemblyDate to int64")}
+				if	_assemblyDateInt64 >= _fromDate		&&
+					_assemblyDateInt64 <= _toDate		{ 
+					_assemblyFlag = 1
+				} 
+			}
 						
 			// Append Assembly to Assembly Array if the flag is 1 (indicates valid for filter criteria)
 			if _assemblyFlag == 1 {
 				res2E=append(res2E,res)
 			}
+			
 			//re-setting the flag and AssemblyDate
 				_assemblyFlag = 0
 				_assemblyDateInt64 = 0
