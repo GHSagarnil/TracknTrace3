@@ -677,101 +677,6 @@ func (t *TnT) getAssembliesByDate(stub shim.ChaincodeStubInterface, args []strin
 	return mapB, nil
 }
 
-//get all Assemblies History based on FromDate & ToDate
-func (t *TnT) getAssembliesHistoryByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	
-	/* Access check -------------------------------------------- Starts*/
-	if len(args) != 3 {
-			return nil, errors.New("Incorrect number of arguments. Expecting 3.")
-		}
-	user_name := args[2]
-	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
-
-	if len(user_name) > 0 {
-		ecert_role, err := t.get_ecert(stub, user_name)
-		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
-		if ecert_role == nil {return nil, errors.New("username not defined")}
-
-		user_role := string(ecert_role)
-		if user_role != ASSEMBLYLINE_ROLE {
-			return nil, errors.New("Permission denied not AssemblyLine Role")
-		}
-	}
-	/* Access check -------------------------------------------- Ends*/
-
-	// YYYYMMDDHHMMSS (e.g. 20170612235959) handled as Int64
-	//var _fromDate int64
-	//var _toDate int64
-	
-	_fromDate, err := strconv.ParseInt(args[0], 10, 64)
-	if err != nil { return nil, errors.New ("Error in converting FromDate to int64")}
-	
-	_toDate, err := strconv.ParseInt(args[1], 10, 64)
-	if err != nil { return nil, errors.New ("Error in converting ToDate to int64")}
-	
-	_assemblyFlag:= 0
-
-	bytes, err := stub.GetState("Assemblies")
-	if err != nil { return nil, errors.New("Unable to get Assemblies") }
-
-	var assemID_Holder AssemblyID_Holder
-	var _assemblyDateInt64 int64
-	
-	err = json.Unmarshal(bytes, &assemID_Holder)
-	if err != nil {	return nil, errors.New("Corrupt Assemblies") }
-
-	// Array of filtered Assemblies
-	res2E:= []AssemblyLine{}	
-	// Filtered Assembly
-	//res := new(AssemblyLine)
-	
-	//Looping through the array of assemblyids
-	for _, assemblyId := range assemID_Holder.AssemblyIDs {
-
-		//Get the AssemblyLine History for each AssemblyID
-		assemLine_HolderKey := assemblyId + "H" // Indicates History Key for Assembly with ID = _assemblyId
-		bytesAssemblyLinesHistoryByID, err := stub.GetState(assemLine_HolderKey)
-		if err != nil { return nil, errors.New("Unable to get bytesAssemblyLinesHistoryByID") }
-
-		var assemLineHistory_Holder AssemblyLine_Holder
-
-		err = json.Unmarshal(bytesAssemblyLinesHistoryByID, &assemLineHistory_Holder)
-		if err != nil {	return nil, errors.New("Corrupt assemLineHistory_Holder record") }
-
-		//Looping through the array of assemblies
-		for _, res := range assemLineHistory_Holder.AssemblyLines {
-		
-			//Check the filter condition YYYYMMDDHHMMSS
-			/*
-			if len(res.AssemblyDate) != 14 {return nil, errors.New("AssemblyDate must be 14 digit datetime field.")}
-			if _assemblyDateInt64, err = strconv.ParseInt(res.AssemblyDate, 10, 64); err != nil { errors.New ("Error in converting AssemblyDate to int64")}
-			*/
-			//Skip if not a valid date YYYYMMDDHHMMSS
-			if len(res.AssemblyDate) == 14 {
-				if _assemblyDateInt64, err = strconv.ParseInt(res.AssemblyDate, 10, 64); err == nil { 
-					if	_assemblyDateInt64 >= _fromDate		&&
-						_assemblyDateInt64 <= _toDate		{ 
-						_assemblyFlag = 1
-					} 
-				}
-			}
-						
-			// Append Assembly to Assembly Array if the flag is 1 (indicates valid for filter criteria)
-			if _assemblyFlag == 1 {
-				res2E=append(res2E,res)
-			}
-			
-			//re-setting the flag and AssemblyDate
-				_assemblyFlag = 0
-				_assemblyDateInt64 = 0
-		} // For assemLineHistory_Holder.AssemblyLines ends
-	} // For assemID_Holder.AssemblyIDs ends
-
-    mapB, _ := json.Marshal(res2E)
-    //fmt.Println(string(mapB))
-	return mapB, nil
-}
-
 //get all Assemblies based on Type & BatchNo & From & To Date
 func (t *TnT) getAssembliesByBatchNumberAndByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	
@@ -868,6 +773,221 @@ func (t *TnT) getAssembliesByBatchNumberAndByDate(stub shim.ChaincodeStubInterfa
 		_assemblyFlag = 0
 		_assemblyDateInt64 = 0
 	} // For ends
+
+    mapB, _ := json.Marshal(res2E)
+    //fmt.Println(string(mapB))
+	return mapB, nil
+}
+
+
+//get all Assemblies History based on FromDate & ToDate
+func (t *TnT) getAssembliesHistoryByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
+	/* Access check -------------------------------------------- Starts*/
+	if len(args) != 3 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 3.")
+		}
+	user_name := args[2]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != ASSEMBLYLINE_ROLE {
+			return nil, errors.New("Permission denied not AssemblyLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+
+	// YYYYMMDDHHMMSS (e.g. 20170612235959) handled as Int64
+	//var _fromDate int64
+	//var _toDate int64
+	
+	_fromDate, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting FromDate to int64")}
+	
+	_toDate, err := strconv.ParseInt(args[1], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting ToDate to int64")}
+	
+	_assemblyFlag:= 0
+
+	bytes, err := stub.GetState("Assemblies")
+	if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+	var assemID_Holder AssemblyID_Holder
+	var _assemblyDateInt64 int64
+	
+	err = json.Unmarshal(bytes, &assemID_Holder)
+	if err != nil {	return nil, errors.New("Corrupt Assemblies") }
+
+	// Array of filtered Assemblies
+	res2E:= []AssemblyLine{}	
+	// Filtered Assembly
+	//res := new(AssemblyLine)
+	
+	//Looping through the array of assemblyids
+	for _, assemblyId := range assemID_Holder.AssemblyIDs {
+
+		//Get the AssemblyLine History for each AssemblyID
+		assemLine_HolderKey := assemblyId + "H" // Indicates History Key for Assembly with ID = _assemblyId
+		bytesAssemblyLinesHistoryByID, err := stub.GetState(assemLine_HolderKey)
+		if err != nil { return nil, errors.New("Unable to get bytesAssemblyLinesHistoryByID") }
+
+		var assemLineHistory_Holder AssemblyLine_Holder
+
+		err = json.Unmarshal(bytesAssemblyLinesHistoryByID, &assemLineHistory_Holder)
+		if err != nil {	return nil, errors.New("Corrupt assemLineHistory_Holder record") }
+
+		//Looping through the array of assemblies
+		for _, res := range assemLineHistory_Holder.AssemblyLines {
+		
+			//Check the filter condition YYYYMMDDHHMMSS
+			/*
+			if len(res.AssemblyDate) != 14 {return nil, errors.New("AssemblyDate must be 14 digit datetime field.")}
+			if _assemblyDateInt64, err = strconv.ParseInt(res.AssemblyDate, 10, 64); err != nil { errors.New ("Error in converting AssemblyDate to int64")}
+			*/
+			//Skip if not a valid date YYYYMMDDHHMMSS
+			if len(res.AssemblyDate) == 14 {
+				if _assemblyDateInt64, err = strconv.ParseInt(res.AssemblyDate, 10, 64); err == nil { 
+					if	_assemblyDateInt64 >= _fromDate		&&
+						_assemblyDateInt64 <= _toDate		{ 
+						_assemblyFlag = 1
+					} 
+				}
+			}
+						
+			// Append Assembly to Assembly Array if the flag is 1 (indicates valid for filter criteria)
+			if _assemblyFlag == 1 {
+				res2E=append(res2E,res)
+			}
+			
+			//re-setting the flag and AssemblyDate
+				_assemblyFlag = 0
+				_assemblyDateInt64 = 0
+		} // For assemLineHistory_Holder.AssemblyLines ends
+	} // For assemID_Holder.AssemblyIDs ends
+
+    mapB, _ := json.Marshal(res2E)
+    //fmt.Println(string(mapB))
+	return mapB, nil
+}
+
+
+//get all Assemblies History based on Type & BatchNo & From & To Date
+func (t *TnT) getAssembliesHistoryByBatchNumberAndByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
+	/* Access check -------------------------------------------- Starts*/
+	if len(args) != 3 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 3.")
+		}
+	user_name := args[2]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != ASSEMBLYLINE_ROLE {
+			return nil, errors.New("Permission denied not AssemblyLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+
+	// YYYYMMDDHHMMSS (e.g. 20170612235959) handled as Int64
+	//var _fromDate int64
+	//var _toDate int64
+	
+	_batchType:= args[0]
+	_batchNumber:= args[1]
+	_assemblyFlag:= 0
+
+	_fromDate, err := strconv.ParseInt(args[2], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting FromDate to int64")}
+	
+	_toDate, err := strconv.ParseInt(args[3], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting ToDate to int64")}
+
+	bytes, err := stub.GetState("Assemblies")
+	if err != nil { return nil, errors.New("Unable to get Assemblies") }
+
+	var assemID_Holder AssemblyID_Holder
+	var _assemblyDateInt64 int64
+	
+	err = json.Unmarshal(bytes, &assemID_Holder)
+	if err != nil {	return nil, errors.New("Corrupt Assemblies") }
+
+	// Array of filtered Assemblies
+	res2E:= []AssemblyLine{}	
+	// Filtered Assembly
+	//res := new(AssemblyLine)
+	
+	//Looping through the array of assemblyids
+	for _, assemblyId := range assemID_Holder.AssemblyIDs {
+
+		//Get the AssemblyLine History for each AssemblyID
+		assemLine_HolderKey := assemblyId + "H" // Indicates History Key for Assembly with ID = _assemblyId
+		bytesAssemblyLinesHistoryByID, err := stub.GetState(assemLine_HolderKey)
+		if err != nil { return nil, errors.New("Unable to get bytesAssemblyLinesHistoryByID") }
+
+		var assemLineHistory_Holder AssemblyLine_Holder
+
+		err = json.Unmarshal(bytesAssemblyLinesHistoryByID, &assemLineHistory_Holder)
+		if err != nil {	return nil, errors.New("Corrupt assemLineHistory_Holder record") }
+
+		//Looping through the array of assemblies
+		for _, res := range assemLineHistory_Holder.AssemblyLines {
+		
+			//Check the filter condition YYYYMMDDHHMMSS
+			/*
+			if len(res.AssemblyDate) != 14 {return nil, errors.New("AssemblyDate must be 14 digit datetime field.")}
+			if _assemblyDateInt64, err = strconv.ParseInt(res.AssemblyDate, 10, 64); err != nil { errors.New ("Error in converting AssemblyDate to int64")}
+			*/
+			//Skip if not a valid date YYYYMMDDHHMMSS
+			if len(res.AssemblyDate) == 14 {
+				if _assemblyDateInt64, err = strconv.ParseInt(res.AssemblyDate, 10, 64); err == nil { 
+					if	_assemblyDateInt64 >= _fromDate		&&
+						_assemblyDateInt64 <= _toDate		{ 
+							if 		   _batchType == FIL_BATCH					&&
+										res.FilamentBatchId == _batchNumber		{ 
+										_assemblyFlag = 1
+							} else if  _batchType == LED_BATCH					&&
+										res.LedBatchId == _batchNumber			{ 
+										_assemblyFlag = 1
+							} else if  _batchType == CIR_BATCH					&&
+										res.CircuitBoardBatchId == _batchNumber	{ 
+										_assemblyFlag = 1
+							} else if  _batchType == WRE_BATCH					&&
+										res.WireBatchId == _batchNumber			{ 
+										_assemblyFlag = 1
+							} else if  _batchType == CAS_BATCH					&&
+										res.CasingBatchId == _batchNumber		{ 
+										_assemblyFlag = 1
+							} else if  _batchType == ADP_BATCH					&&
+										res.AdaptorBatchId == _batchNumber		{ 
+										_assemblyFlag = 1
+							} else if  _batchType == STK_BATCH					&&
+										res.StickPodBatchId == _batchNumber		{ 
+										_assemblyFlag = 1
+							}
+					} // Date check
+				}// Date parse
+			}// Date lenght check
+						
+			// Append Assembly to Assembly Array if the flag is 1 (indicates valid for filter criteria)
+			if _assemblyFlag == 1 {
+				res2E=append(res2E,res)
+			}
+			
+			//re-setting the flag and AssemblyDate
+				_assemblyFlag = 0
+				_assemblyDateInt64 = 0
+		} // For assemLineHistory_Holder.AssemblyLines ends
+	} // For assemID_Holder.AssemblyIDs ends
 
     mapB, _ := json.Marshal(res2E)
     //fmt.Println(string(mapB))
@@ -1760,6 +1880,9 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getAssembliesByBatchNumberAndByDate" {
 		t := TnT{}
 		return t.getAssembliesByBatchNumberAndByDate(stub, args)
+	} else if function == "getAssembliesHistoryByBatchNumberAndByDate" {
+		t := TnT{}
+		return t.getAssembliesHistoryByBatchNumberAndByDate(stub, args)
 	} 
 	
 	return nil, errors.New("Received unknown function query")
