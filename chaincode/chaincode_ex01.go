@@ -880,10 +880,10 @@ func (t *TnT) getAssembliesHistoryByDate(stub shim.ChaincodeStubInterface, args 
 func (t *TnT) getAssembliesHistoryByBatchNumberAndByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	
 	/* Access check -------------------------------------------- Starts*/
-	if len(args) != 3 {
-			return nil, errors.New("Incorrect number of arguments. Expecting 3.")
+	if len(args) != 5 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 4.")
 		}
-	user_name := args[2]
+	user_name := args[4]
 	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
 
 	if len(user_name) > 0 {
@@ -893,7 +893,7 @@ func (t *TnT) getAssembliesHistoryByBatchNumberAndByDate(stub shim.ChaincodeStub
 
 		user_role := string(ecert_role)
 		if user_role != ASSEMBLYLINE_ROLE {
-			return nil, errors.New("Permission denied not AssemblyLine Role")
+			return nil, errors.New("Permission denied not an AssemblyLine Role")
 		}
 	}
 	/* Access check -------------------------------------------- Ends*/
@@ -939,7 +939,7 @@ func (t *TnT) getAssembliesHistoryByBatchNumberAndByDate(stub shim.ChaincodeStub
 		err = json.Unmarshal(bytesAssemblyLinesHistoryByID, &assemLineHistory_Holder)
 		if err != nil {	return nil, errors.New("Corrupt assemLineHistory_Holder record") }
 
-		//Looping through the array of assemblies
+		//Looping through the array of assemblies to check if the filter condition matches - then consider the Assembly for response (latest status only)
 		for _, res := range assemLineHistory_Holder.AssemblyLines {
 		
 			//Check the filter condition YYYYMMDDHHMMSS
@@ -978,9 +978,12 @@ func (t *TnT) getAssembliesHistoryByBatchNumberAndByDate(stub shim.ChaincodeStub
 				}// Date parse
 			}// Date lenght check
 						
-			// Append Assembly to Assembly Array if the flag is 1 (indicates valid for filter criteria)
+			// Append Assembly current status to Assembly Selection Array if the flag is 1 (indicates valid for filter criteria)
 			if _assemblyFlag == 1 {
-				res2E=append(res2E,res)
+				latestIndex := len(assemLineHistory_Holder.AssemblyLines) - 1
+				latestRes := assemLineHistory_Holder.AssemblyLines[latestIndex]
+				res2E=append(res2E,latestRes)
+				break // break the for loop as selected Assembly has been added to the list
 			}
 			
 			//re-setting the flag and AssemblyDate
