@@ -50,7 +50,8 @@ const   WRE_BATCH  				=	"WireBatchId"
 const   CAS_BATCH  				=	"CasingBatchId"
 const   ADP_BATCH  				=	"AdaptorBatchId"
 const   STK_BATCH  				=	"StickPodBatchId"
-
+const   HLD_ASSMB_TYP  			=	"HolderAssemblyId"
+const 	CHG_ASSMB_TYP 			= 	"ChargerAssemblyId"
 
 
 // Assembly Line Structure
@@ -1745,6 +1746,338 @@ func (t *TnT) getPackageLineHistoryByID(stub shim.ChaincodeStubInterface, args [
 	return bytesPackLineHolder, nil	
 
 }
+// Search Package
+//get all Packages based on Assembly Id
+func (t *TnT) getPackagesByAssemblyId(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
+	/* Access check -------------------------------------------- Starts*/
+	if len(args) != 3 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 3.")
+		}
+	user_name := args[2]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != PACKAGELINE_ROLE {
+			return nil, errors.New("Permission denied not PakagingLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+
+	_assemblyType:= args[0]
+	_assemblyId := args[1]
+	_packageFlag:= 0
+
+	bytes, err := stub.GetState("Packages")
+	if err != nil { return nil, errors.New("Unable to get Packages") }
+
+	var packageCaseID_Holder PackageCaseID_Holder
+
+	err = json.Unmarshal(bytes, &packageCaseID_Holder)
+	if err != nil {	return nil, errors.New("Corrupt Packages") }
+
+	res2E:= []*PackageLine{}	
+
+	for _, caseId := range packageCaseID_Holder.PackageCaseIDs {
+
+		//Get the existing Packages
+		packageAsBytes, err := stub.GetState(caseId)
+		if err != nil { return nil, errors.New("Failed to get Package")}
+
+		if packageAsBytes != nil { 
+			res := new(PackageLine)
+			json.Unmarshal(packageAsBytes, &res)
+
+			//Check the filter condition
+			if 		   _assemblyType == HLD_ASSMB_TYP	&&
+						res.HolderAssemblyId == _assemblyId		{ 
+						_packageFlag = 1
+			} else if  _assemblyType == CHG_ASSMB_TYP	&&
+						res.ChargerAssemblyId == _assemblyId	{ 
+						_packageFlag = 1
+			}
+			
+
+			// Append Assembly to Assembly Array if the flag is 1 (indicates valid for filter criteria)
+			if _packageFlag == 1 {
+				res2E=append(res2E,res)
+			}
+		} // If ends
+		//re-setting the flag to 0
+		_packageFlag = 0
+	} // For ends
+
+    mapB, _ := json.Marshal(res2E)
+    //fmt.Println(string(mapB))
+	return mapB, nil
+}
+//get all Packages based on FromDate & ToDate and AssemblyId
+func (t *TnT) getPackagesByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
+	/* Access check -------------------------------------------- Starts*/
+	if len(args) != 3 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 3.")
+		}
+	user_name := args[2]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != PACKAGELINE_ROLE {
+			return nil, errors.New("Permission denied not PackageLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+
+	// YYYYMMDDHHMMSS (e.g. 20170612235959) handled as Int64
+	//var _fromDate int64
+	//var _toDate int64
+	
+	_fromDate, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting FromDate to int64")}
+	
+	_toDate, err := strconv.ParseInt(args[1], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting ToDate to int64")}
+	
+	_packageFlag:= 0
+
+	bytes, err := stub.GetState("Packages")
+	if err != nil { return nil, errors.New("Unable to get Packages") }
+
+	var packageCaseID_Holder PackageCaseID_Holder
+	var _packageDateInt64 int64
+	
+	err = json.Unmarshal(bytes, &packageCaseID_Holder)
+	if err != nil {	return nil, errors.New("Corrupt Packages") }
+
+	res2E:= []*PackageLine{}	
+
+	for _, caseId := range packageCaseID_Holder.PackageCaseIDs {
+
+		//Get the existing Package Line History
+		packageAsBytes, err := stub.GetState(caseId)
+		if err != nil { return nil, errors.New("Failed to get Case")}
+		if packageAsBytes == nil { return nil, errors.New("Failed to get AsseCasembly")}
+
+		res := new(PackageLine)
+		json.Unmarshal(packageAsBytes, &res)
+
+		//fmt.Printf("%T, %v\n", _fromDate, _fromDate)
+		//fmt.Printf("%T, %v\n", _toDate, _toDate)
+		//if _fromDate == _toDate { return nil, errors.New("Failed to get Assembly")}
+		
+		//Check the filter condition YYYYMMDDHHMMSS
+		if len(res.PackageCreationDate) != 14 {return nil, errors.New("PackageCreationDate must be 14 digit datetime field.")}
+		if _packageDateInt64, err = strconv.ParseInt(res.PackageCreationDate, 10, 64); err != nil { errors.New ("Error in converting PackageCreationDate to int64")}
+		if	_packageDateInt64 >= _fromDate		&&
+			_packageDateInt64 <= _toDate		{ 
+			_packageFlag = 1
+		} 
+					
+		// Append Package Case to Package Array if the flag is 1 (indicates valid for filter criteria)
+		if _packageFlag == 1 {
+			res2E=append(res2E,res)
+		}
+	//re-setting the flag and PackageCreationDate
+		_packageFlag = 0
+		_packageDateInt64 = 0
+	} // For ends
+
+    mapB, _ := json.Marshal(res2E)
+    //fmt.Println(string(mapB))
+	return mapB, nil
+}
+
+//get all Assemblies based on Type & BatchNo & From & To Date
+func (t *TnT) getPackageByAssemblyIdAndByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	/* Access check -------------------------------------------- Starts*/
+	if len(args) != 5 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 5.")
+		}
+	user_name := args[4]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != PACKAGELINE_ROLE {
+			return nil, errors.New("Permission denied not PackageLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+
+	// YYYYMMDDHHMMSS (e.g. 20170612235959) handled as Int64
+	//var _fromDate int64
+	//var _toDate int64
+	_assemblyType:= args[0]
+	_assemblyId := args[1]
+	_fromDate, err := strconv.ParseInt(args[2], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting FromDate to int64")}
+	
+	_toDate, err := strconv.ParseInt(args[3], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting ToDate to int64")}
+	
+	_packageFlag:= 0
+
+	bytes, err := stub.GetState("Packages")
+	if err != nil { return nil, errors.New("Unable to get Packages") }
+
+	var packageCaseID_Holder PackageCaseID_Holder
+	var _packageDateInt64 int64
+	
+	err = json.Unmarshal(bytes, &packageCaseID_Holder)
+	if err != nil {	return nil, errors.New("Corrupt Packages") }
+
+	res2E:= []*PackageLine{}	
+
+	for _, caseId := range packageCaseID_Holder.PackageCaseIDs {
+
+		//Get the existing Package Line History
+		packageAsBytes, err := stub.GetState(caseId)
+		if err != nil { return nil, errors.New("Failed to get Case")}
+		if packageAsBytes == nil { return nil, errors.New("Failed to get AsseCasembly")}
+
+		res := new(PackageLine)
+		json.Unmarshal(packageAsBytes, &res)
+
+		//fmt.Printf("%T, %v\n", _fromDate, _fromDate)
+		//fmt.Printf("%T, %v\n", _toDate, _toDate)
+		//if _fromDate == _toDate { return nil, errors.New("Failed to get Assembly")}
+		
+		//Check the filter condition YYYYMMDDHHMMSS
+		if len(res.PackageCreationDate) != 14 {return nil, errors.New("PackageCreationDate must be 14 digit datetime field.")}
+		if _packageDateInt64, err = strconv.ParseInt(res.PackageCreationDate, 10, 64); err != nil { errors.New ("Error in converting PackageCreationDate to int64")}
+		if	_packageDateInt64 >= _fromDate		&&
+			_packageDateInt64 <= _toDate{ 
+				if  _assemblyType == HLD_ASSMB_TYP	&&
+				res.HolderAssemblyId == _assemblyId	{ 
+				_packageFlag = 1
+			} else if  _assemblyType == CHG_ASSMB_TYP &&
+						res.ChargerAssemblyId == _assemblyId{ 
+						_packageFlag = 1
+			}
+		} 
+
+		// Append Package Case to Package Array if the flag is 1 (indicates valid for filter criteria)
+		if _packageFlag == 1 {
+			res2E=append(res2E,res)
+		}
+	//re-setting the flag and PackageCreationDate
+		_packageFlag = 0
+		_packageDateInt64 = 0
+	} // For ends
+
+    mapB, _ := json.Marshal(res2E)
+    //fmt.Println(string(mapB))
+	return mapB, nil
+
+}
+//get all Packages History based on FromDate & ToDate
+func (t *TnT) getPackagesHistoryByDate(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
+	/* Access check -------------------------------------------- Starts*/
+	if len(args) != 3 {
+			return nil, errors.New("Incorrect number of arguments. Expecting 3.")
+		}
+	user_name := args[2]
+	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
+
+	if len(user_name) > 0 {
+		ecert_role, err := t.get_ecert(stub, user_name)
+		if err != nil {return nil, errors.New("userrole couldn't be retrieved")}
+		if ecert_role == nil {return nil, errors.New("username not defined")}
+
+		user_role := string(ecert_role)
+		if user_role != PACKAGELINE_ROLE {
+			return nil, errors.New("Permission denied not PackagingLine Role")
+		}
+	}
+	/* Access check -------------------------------------------- Ends*/
+
+	// YYYYMMDDHHMMSS (e.g. 20170612235959) handled as Int64
+	//var _fromDate int64
+	//var _toDate int64
+	
+	_fromDate, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting FromDate to int64")}
+	
+	_toDate, err := strconv.ParseInt(args[1], 10, 64)
+	if err != nil { return nil, errors.New ("Error in converting ToDate to int64")}
+	
+	_packageFlag:= 0
+
+	bytes, err := stub.GetState("Packages")
+	if err != nil { return nil, errors.New("Unable to get Packages") }
+
+	var packageCaseID_Holder PackageCaseID_Holder
+	var _packageDateInt64 int64
+	
+	err = json.Unmarshal(bytes, &packageCaseID_Holder)
+	if err != nil {	return nil, errors.New("Corrupt Packages") }
+
+	// Array of filtered Package Line
+	res2E:= []PackageLine{}	
+
+	
+	//Looping through the array of packageCaseId
+	for _, caseId := range packageCaseID_Holder.PackageCaseIDs {
+
+		//Get the AssemblyLine History for each AssemblyID
+		packLine_HolderKey := caseId + "H" // Indicates history key
+		bytesPackageHistoryLines, err := stub.GetState(packLine_HolderKey)
+		if err != nil { return nil, errors.New("Unable to get bytesPackageHistoryLines") }
+
+		var packLine_Holder PackageLine_Holder
+
+		err = json.Unmarshal(bytesPackageHistoryLines, &packLine_Holder)
+		if err != nil {	return nil, errors.New("Corrupt History Holder record") }
+
+		//Looping through the array of assemblies
+		for _, res := range packLine_Holder.PackageLines {
+		
+			
+			//Skip if not a valid date YYYYMMDDHHMMSS
+			if len(res.PackageCreationDate) == 14 {
+				if _packageDateInt64, err = strconv.ParseInt(res.PackageCreationDate, 10, 64); err == nil { 
+					if	_packageDateInt64 >= _fromDate		&&
+						_packageDateInt64 <= _toDate		{ 
+						_packageFlag = 1
+					} 
+				}
+			}
+						
+			// Append AssembPackagely to Package Array if the flag is 1 (indicates valid for filter criteria)
+			if _packageFlag == 1 {
+				res2E=append(res2E,res)
+			}
+			
+			//re-setting the flag and PackageCreationDate
+				_packageFlag = 0
+				_packageDateInt64 = 0
+		} // For packLine_Holder.PackageLines ends
+	} // For packageCaseID_Holder.PackageCaseIDs ends
+
+    mapB, _ := json.Marshal(res2E)
+    //fmt.Println(string(mapB))
+	return mapB, nil
+}
+
+
+
+
 //Security & Access
 
 //==============================================================================================================================
@@ -1890,7 +2223,20 @@ func (t *TnT) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	} else if function == "getAssembliesHistoryByBatchNumberAndByDate" {
 		t := TnT{}
 		return t.getAssembliesHistoryByBatchNumberAndByDate(stub, args)
+	} else if function == "getPackagesByAssemblyId" {
+		t := TnT{}
+		return t.getPackagesByAssemblyId(stub, args)
+	} else if function == "getPackagesByDate" {
+		t := TnT{}
+		return t.getPackagesByDate(stub, args)
+	} else if function == "getPackageByAssemblyIdAndByDate" {
+		t := TnT{}
+		return t.getPackageByAssemblyIdAndByDate(stub, args)
+	} else if function == "getPackagesHistoryByDate" {
+		t := TnT{}
+		return t.getPackagesHistoryByDate(stub, args)
 	} 
+
 	
 	return nil, errors.New("Received unknown function query")
 }
