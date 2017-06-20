@@ -939,6 +939,10 @@ func (t *TnT) getAssembliesHistoryByBatchNumberAndByDate(stub shim.ChaincodeStub
 		err = json.Unmarshal(bytesAssemblyLinesHistoryByID, &assemLineHistory_Holder)
 		if err != nil {	return nil, errors.New("Corrupt assemLineHistory_Holder record") }
 
+		//re-setting the flag and AssemblyDate
+		_assemblyFlag = 0
+		_assemblyDateInt64 = 0
+
 		//Looping through the array of assemblies to check if the filter condition matches - then consider the Assembly for response (latest status only)
 		for _, res := range assemLineHistory_Holder.AssemblyLines {
 		
@@ -980,8 +984,8 @@ func (t *TnT) getAssembliesHistoryByBatchNumberAndByDate(stub shim.ChaincodeStub
 						
 			// Append Assembly current status to Assembly Selection Array if the flag is 1 (indicates valid for filter criteria)
 			if _assemblyFlag == 1 {
-				latestIndex := len(assemLineHistory_Holder.AssemblyLines) - 1
-				latestRes := assemLineHistory_Holder.AssemblyLines[latestIndex]
+				latestIndex := len(assemLineHistory_Holder.AssemblyLines)
+				latestRes := assemLineHistory_Holder.AssemblyLines[latestIndex-1]
 				res2E=append(res2E,latestRes)
 				break // break the for loop as selected Assembly has been added to the list
 			}
