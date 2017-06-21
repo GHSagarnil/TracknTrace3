@@ -1876,8 +1876,8 @@ func (t *TnT) getPackagesByDate(stub shim.ChaincodeStubInterface, args []string)
 		//if _fromDate == _toDate { return nil, errors.New("Failed to get Assembly")}
 		
 		//Check the filter condition YYYYMMDDHHMMSS
-		if len(res.PackageCreationDate) != 14 {return nil, errors.New("PackageCreationDate must be 14 digit datetime field.")}
-		if _packageDateInt64, err = strconv.ParseInt(res.PackageCreationDate, 10, 64); err != nil { errors.New ("Error in converting PackageCreationDate to int64")}
+		if len(res.PackagingDate) != 14 {return nil, errors.New("PackagingDate must be 14 digit datetime field.")}
+		if _packageDateInt64, err = strconv.ParseInt(res.PackagingDate, 10, 64); err != nil { errors.New ("Error in converting PackagingDate to int64")}
 		if	_packageDateInt64 >= _fromDate		&&
 			_packageDateInt64 <= _toDate		{ 
 			_packageFlag = 1
@@ -1958,8 +1958,8 @@ func (t *TnT) getPackageByAssemblyIdAndByDate(stub shim.ChaincodeStubInterface, 
 		//if _fromDate == _toDate { return nil, errors.New("Failed to get Assembly")}
 		
 		//Check the filter condition YYYYMMDDHHMMSS
-		if len(res.PackageCreationDate) != 14 {return nil, errors.New("PackageCreationDate must be 14 digit datetime field.")}
-		if _packageDateInt64, err = strconv.ParseInt(res.PackageCreationDate, 10, 64); err != nil { errors.New ("Error in converting PackageCreationDate to int64")}
+		if len(res.PackagingDate) != 14 {return nil, errors.New("PackagingDate must be 14 digit datetime field.")}
+		if _packageDateInt64, err = strconv.ParseInt(res.PackagingDate, 10, 64); err != nil { errors.New ("Error in converting PackagingDate to int64")}
 		if	_packageDateInt64 >= _fromDate		&&
 			_packageDateInt64 <= _toDate{ 
 				if  _assemblyType == HLD_ASSMB_TYP	&&
@@ -2050,8 +2050,8 @@ func (t *TnT) getPackagesHistoryByDate(stub shim.ChaincodeStubInterface, args []
 		
 			
 			//Skip if not a valid date YYYYMMDDHHMMSS
-			if len(res.PackageCreationDate) == 14 {
-				if _packageDateInt64, err = strconv.ParseInt(res.PackageCreationDate, 10, 64); err == nil { 
+			if len(res.PackagingDate) == 14 {
+				if _packageDateInt64, err = strconv.ParseInt(res.PackagingDate, 10, 64); err == nil { 
 					if	_packageDateInt64 >= _fromDate		&&
 						_packageDateInt64 <= _toDate		{ 
 						_packageFlag = 1
@@ -2064,7 +2064,7 @@ func (t *TnT) getPackagesHistoryByDate(stub shim.ChaincodeStubInterface, args []
 				res2E=append(res2E,res)
 			}
 			
-			//re-setting the flag and PackageCreationDate
+			//re-setting the flag and PackagingDate
 				_packageFlag = 0
 				_packageDateInt64 = 0
 		} // For packLine_Holder.PackageLines ends
