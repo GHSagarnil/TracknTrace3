@@ -1259,7 +1259,7 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 		//_holderAssemblyId := args[1]
 		//_chargerAssemblyId := args[2]
 		_packageStatus := args[3]
-		//_packagingDate := args[4]
+		_packagingDate := args[4]
 		_shippingToAddress := args[5]
 		// Status of associated Assemblies	
 		_assemblyStatus := args[6]
@@ -1285,7 +1285,7 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 		//pack.HolderAssemblyId = _holderAssemblyId
 		//pack.ChargerAssemblyId = _chargerAssemblyId
 		pack.PackageStatus = _packageStatus
-		//pack.PackagingDate = _packagingDate
+		pack.PackagingDate = _packagingDate
 		pack.ShippingToAddress = _shippingToAddress
 		//pack.PackageCreationDate = _packageCreationDate
 		pack.PackageLastUpdatedOn = _packageLastUpdatedOn
