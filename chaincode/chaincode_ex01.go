@@ -1693,7 +1693,7 @@ func (t *TnT) updatePackageInfo2ById(stub shim.ChaincodeStubInterface, args []st
 			fmt.Println("Updated Package successfully")
 
 			//Update Holder Assemblies status
-			if 	len(_holderAssemblyId) == 0	{
+			if 	len(_holderAssemblyId) > 0	{
 				//_assemblyStatus:= "PACKAGED"
 				_time:= time.Now().Local()
 				_assemblyLastUpdatedOn := _time.Format("20060102150405")
@@ -1711,7 +1711,7 @@ func (t *TnT) updatePackageInfo2ById(stub shim.ChaincodeStubInterface, args []st
 
 				// Don't update assembly if there is no chnage in status
 				// Update only when AssemblyInfo2 is not set to avoid uncenessary duplicate updates
-				if len(assemHolder.AssemblyInfo2) > 0 {
+				if len(assemHolder.AssemblyInfo2) == 0 {
 
 					//update the AssemblyLine status
 					//assemHolder.AssemblyStatus = _assemblyStatus
@@ -1755,7 +1755,7 @@ func (t *TnT) updatePackageInfo2ById(stub shim.ChaincodeStubInterface, args []st
 			}
 
 			//Update Charger Assemblies status
-			if 	len(_chargerAssemblyId) == 0		{
+			if 	len(_chargerAssemblyId) > 0		{
 				//_assemblyStatus:= "PACKAGED"
 				_time:= time.Now().Local()
 				_assemblyLastUpdatedOn := _time.Format("20060102150405")
@@ -1773,7 +1773,7 @@ func (t *TnT) updatePackageInfo2ById(stub shim.ChaincodeStubInterface, args []st
 
 				// Don't update assembly if there is no chnage in status
 				// Update only when AssemblyInfo2 is not set to avoid uncenessary duplicate updates
-				if len(assemCharger.AssemblyInfo2) > 0 {
+				if len(assemCharger.AssemblyInfo2) == 0 {
 					//update the AssemblyLine status
 					//assemCharger.AssemblyStatus = _assemblyStatus
 					assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
