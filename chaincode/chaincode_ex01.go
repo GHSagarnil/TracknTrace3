@@ -2546,7 +2546,14 @@ func (t *TnT) Invoke(stub shim.ChaincodeStubInterface, function string, args []s
 	} else if function == "updatePackage" {
 		fmt.Printf("Function is updatePackage")
 		return t.updatePackage(stub, args)
+	} else if function == "updateAssemblyInfo2ByID" {
+		fmt.Printf("Function is updateAssemblyInfo2ByID")
+		return t.updateAssemblyInfo2ByID(stub, args)
+	} else if function == "updatePackageInfo2ById" {
+		fmt.Printf("Function is updatePackageInfo2ById")
+		return t.updatePackageInfo2ById(stub, args)
 	} 
+
 	return nil, errors.New("Received unknown function invocation")
 }
 
