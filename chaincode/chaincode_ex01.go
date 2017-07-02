@@ -1266,7 +1266,7 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			_assemblyLastUpdatedOn := _time.Format("20060102150405")
 			_assemblyLastUpdatedBy := _packageCreatedBy
 			_assemblyPackage:= _caseId // Keeping reference
-
+			
 			//get the Assembly
 			assemblyHolderAsBytes, err := stub.GetState(_holderAssemblyId)
 			if err != nil {	return nil, errors.New("Failed to get assembly Id")	}
@@ -1280,6 +1280,7 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			assemHolder.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 			assemHolder.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
 			assemHolder.AssemblyPackage = _assemblyPackage
+			assemHolder.AssemblyInfo2 = "" // to reset the hascode to be updated later as part of package hash code update
 			//assemHolder.AssemblyInfo2 = _packageInfo2// specia case to store the transaction hash - This will never be the case on creation (only true for update) hence commented
 			
 			bytesHolder, err := json.Marshal(assemHolder)
@@ -1332,7 +1333,7 @@ func (t *TnT) createPackage(stub shim.ChaincodeStubInterface, args []string) ([]
 			assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 			assemCharger.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
 			assemCharger.AssemblyPackage = _assemblyPackage
-
+			assemCharger.AssemblyInfo2 = "" // to reset the hascode to be updated later as part of package hash code update
 
 			
 			bytesCharger, err := json.Marshal(assemCharger)
@@ -1512,7 +1513,7 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 				assemHolder.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 				assemHolder.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
 				assemHolder.AssemblyPackage = _assemblyPackage
-
+				assemHolder.AssemblyInfo2 = "" // to reset the hascode to be updated later as part of package hash code update
 				
 				bytesHolder, err := json.Marshal(assemHolder)
 				if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
@@ -1567,6 +1568,7 @@ func (t *TnT) updatePackage(stub shim.ChaincodeStubInterface, args []string) ([]
 				assemCharger.AssemblyLastUpdatedOn = _assemblyLastUpdatedOn
 				assemCharger.AssemblyLastUpdatedBy = _assemblyLastUpdatedBy
 				assemCharger.AssemblyPackage = _assemblyPackage
+				assemCharger.AssemblyInfo2 = "" // to reset the hascode to be updated later as part of package hash code update
 
 				bytesCharger, err := json.Marshal(assemCharger)
 				if err != nil { fmt.Printf("SAVE_CHANGES: Error converting Assembly record: %s", err); return nil, errors.New("Error converting Assembly record") }
