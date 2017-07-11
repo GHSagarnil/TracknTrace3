@@ -2002,12 +2002,12 @@ func (t *TnT) validateUpdateAssembly(stub shim.ChaincodeStubInterface, args []st
 // Validator before createPackage invoke call
 func (t *TnT) validateCreatePackage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-		if len(args) != 8 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 8. Got: %d.", len(args))
+		if len(args) != 10 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 10. Got: %d.", len(args))
 		}
 
 	/* Access check -------------------------------------------- Starts*/
-	user_name := args[7]
+	user_name := args[9]
 	if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
 
 	if len(user_name) > 0 {
@@ -2035,12 +2035,12 @@ func (t *TnT) validateCreatePackage(stub shim.ChaincodeStubInterface, args []str
 // Validator before updateAssembly invoke call
 func (t *TnT) validateUpdatePackage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 8 {
-				return nil, fmt.Errorf("Incorrect number of arguments. Expecting 8. Got: %d.", len(args))
+	if len(args) != 10 {
+				return nil, fmt.Errorf("Incorrect number of arguments. Expecting 10. Got: %d.", len(args))
 			}
 
 		/* Access check -------------------------------------------- Starts*/
-		user_name := args[7]
+		user_name := args[9]
 		if len(user_name) == 0 { return nil, errors.New("User name supplied as empty") }
 
 		if len(user_name) > 0 {
